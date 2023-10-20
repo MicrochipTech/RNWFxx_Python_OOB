@@ -1,0 +1,24 @@
+# Ignore tool & test folders
+/_*
+
+.idea/
+.vscode
+temp
+
+# Ignore various file extensions
+*.pdf
+*.html
+*.zip
+*.bak
+*.txt
+
+# Certificates
+*.key
+*.crt
+*.pem
+
+# Script auto-generated folders
+tools/CertificateTool/CertBuilds
+logs
+build
+
