@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This document describes how to connect a Microchip RNWF02PC to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is made possible by connecting Microchip's RNWF02PC module to a Host PC with with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
+This document describes how to connect a Microchip RNWF02PC to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is made possible by connecting Microchip's RNWF02PC module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
 
 ## Overview
 
