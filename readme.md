@@ -88,7 +88,7 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
   * Configure the port for **230400b,8N1** once enumerated after plugging in the board.
   * Set the [ENTER] key behavior to send "CR + LF" or "\r\n". **The device will NOT respond if this is set improperly.**
 * In the terminal press the "Enter" key and verify a response from the module
-* Entering the command "AT+GMR" and pressing [ENTER] should display something like this:
+* Entering the command ```AT+GMR``` and pressing [ENTER] should display something like this:
 * Keep the terminal open for the [Wi-Fi Test and Security Setting](#wi-fi-test-and-security-setting) section next... 
   
     <img src="./assets/LorrisTest.png" width="600" alt="">
@@ -384,7 +384,7 @@ Other commands such as the connect to Wi-Fi command, ```AT+WSTA=1```, may take 2
 
 ## State Machine
 
-There are 6+1 state machine "states" that run from state 1 to 6. States 1 through 5 perform increasingly important tasks from Wi-Fi settings, Azure DPS, MQTT and finally the Demo itself in state 6. 
+There are 6+1 state machine "states" that run from state 1 to 6. States 1 through 5 perform increasingly important tasks from Wi-Fi settings, Azure DPS, MQTT and finally the Demo itself in state 6.
 
 State 0 represents a pseudo state, the +1 state (0). It is the Command Line Interface(CLI) and can be used for debug or sending AT+ commands to the RNWF02PC module.
 
