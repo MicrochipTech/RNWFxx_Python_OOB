@@ -15,7 +15,6 @@ This document describes how to connect a Microchip RNWF02PC to a cloud applicati
   * [Wi-FI Module Datasheet](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Wi-Fi%20Module%20Data%20Sheet.pdf?csf=1&web=1&e=GAHeDe) <img src="./assets/tbd.png" width="35">
   * [Add On Board User's Guide](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Add%20On%20Board%20User%27s%20Guide.pdf?csf=1&web=1&e=ilDLpz) <img src="./assets/tbd.png" width="35">
   * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
-  * [Wireless Apps User Guide]() <img src="./assets/tbd.png" width="35">
   * [Firmware](https://microchiptechnology.sharepoint.com/:u:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02_Firmware_v1.0.zip?csf=1&web=1&e=jozerd) <img src="./assets/tbd.png" width="35">
   * [Demo Examples]() <img src="./assets/tbd.png" width="35">
 
@@ -23,7 +22,6 @@ This document describes how to connect a Microchip RNWF02PC to a cloud applicati
   * [Wi-FI Module Datasheet]() <img src="./assets/tbd.png" width="35">
   * [Add On Board User's Guide]() <img src="./assets/tbd.png" width="35">
   * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
-  * [Wireless Apps User Guide]() <img src="./assets/tbd.png" width="35">
   * [Firmware]() <img src="./assets/tbd.png" width="35">
   * [Demo Examples]() <img src="./assets/tbd.png" width="35">
 
