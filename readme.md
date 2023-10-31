@@ -1,20 +1,41 @@
 <a href="https://www.microchip.com"><p align="left"><img src="./assets/MicrochipLogoHorizontalBlackRed.png" width="350" alt=""></a>
 
-# RNWF02PC Python Azure OOBDemo (Out of Box Demo)
+# RNWFxx Python Azure OOBDemo (Out of Box Demo)
 
 ## Introduction
 
 This document describes how to connect a Microchip RNWF02PC to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is made possible by connecting Microchip's RNWF02PC module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
 
+### References
+
+* [RNWFxx Application Developer's Guide](https://internal.onlinedocs.microchip.com/oxy/GUID-D0CB3D06-2ABE-4892-963E-65CAE080D507-en-US-1/index.html) <img src="./assets/todo.png" width="35">
+* [pyDFU Firmware Flashing Tool](https://microchiptechnology.sharepoint.com/:u:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/rio0_pydfu-main@2dc83c1b8f2.zip?csf=1&web=1&e=DyUEvr) <img src="./assets/tbd.png" width="35">
+  
+#### RNFW02
+  * [Wi-FI Module Datasheet](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Wi-Fi%20Module%20Data%20Sheet.pdf?csf=1&web=1&e=GAHeDe) <img src="./assets/tbd.png" width="35">
+  * [Add On Board User's Guide](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Add%20On%20Board%20User%27s%20Guide.pdf?csf=1&web=1&e=ilDLpz) <img src="./assets/tbd.png" width="35">
+  * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
+  * [Wireless Apps User Guide]() <img src="./assets/tbd.png" width="35">
+  * [Firmware](https://microchiptechnology.sharepoint.com/:u:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02_Firmware_v1.0.zip?csf=1&web=1&e=jozerd) <img src="./assets/tbd.png" width="35">
+  * [Demo Examples]() <img src="./assets/tbd.png" width="35">
+
+#### RNFW11
+  * [Wi-FI Module Datasheet]() <img src="./assets/tbd.png" width="35">
+  * [Add On Board User's Guide]() <img src="./assets/tbd.png" width="35">
+  * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
+  * [Wireless Apps User Guide]() <img src="./assets/tbd.png" width="35">
+  * [Firmware]() <img src="./assets/tbd.png" width="35">
+  * [Demo Examples]() <img src="./assets/tbd.png" width="35">
+
 ## Overview
 
 The demo requires a few basic steps, which includes signing up for a Microsoft Azure account.
 
-### [Hardware Preparation](#hardware-preparation-1)
+### [Software Prerequisites](#software-prerequisites-and-installation)
 
 ### [Clone this Repository](#clone-this-repository-1)
 
-### [Software Prerequisites](#software-prerequisites-and-installation)
+### [Hardware Preparation](#hardware-preparation-1)
 
 ### [Device Provisioning and Cloud Resources](#device-provisioning-and-cloud-resources-setup)
 
@@ -31,22 +52,10 @@ The Python script **"oobDemo.py"** uses an external JSON file to record various 
 > ## App.cfg Setting
 > _STRING_SETTING_ = Setting(s) to remember during _this_ step will be shown here. . .
 
-## Clone this Repository
-
-Create a clone of this [repository](https://github.com/MicrochipTech/RNWF02) using the [Git](https://git-scm.com) tool in a command line window
-
-```bash
-git clone https://github.com/MicrochipTech/RNWF02
-```
-
-As an alternative, scroll up towards the top of this page, click on the **Code** button, and download a ZIP file of the repository.
-
-<img src="./assets/Download_ZIP.png" width="200" alt="">
-
-## Software Prerequisites and Installation
+# Software Prerequisites and Installation
 
 1. [Git](https://git-scm.com/)
-2. [Python 3.10.11 or later](https://www.python.org/downloads/)
+2. [Python 3.10.11 or later](https://www.python.org/downloads/). Other versions may work, but have not been tested.
 
    * Select "Add python.exe to PATH during installation [Recommended]
   
@@ -67,20 +76,33 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
      * [Enter] behavior: Menu->Terminal->Change Settings:<br> Pressing return/enter key sends: "\r\n(DOS)"
    * [Tera Term](https://ttssh2.osdn.jp/index.html.en) 
      * 'Enter' behavior: Menu->Setup-Terminal...<br> New-line, Receive: "CR", Transmit: "CR+LF"
-4. Certificate **sendTo_tool** - Use Windows Explorer's "right click" function to install device certificates to the RNFW02PC module.
+4. Certificate **sendTo_tool** - Use Windows Explorer's "right click" function to install device certificates to the RNFWxx module.
    * Open a Windows Explorer to the "_[YOUR_OOB_DEMO_ROOT_FOLDER]_\tools\sendTo_tool" folder.
    * Double-click on the "install.cmd" file.
    * When you are done with the demo and no longer need to install certificates, run the 'uninstall' command.
    * Full instructions are available [here](./tools/sendTo_tool/CertKeyFlashTool.md).
 
+# Clone this Repository
+
+Create a clone of this [repository](https://github.com/MicrochipTech/RNWF02) using the [Git](https://git-scm.com) tool in a command line window
+
+```bash
+git clone https://github.com/MicrochipTech/RNWF02
+```
+
+As an alternative, scroll up towards the top of this page, click on the **Code** button, and download a ZIP file of the repository.
+
+<img src="./assets/Download_ZIP.png" width="200" alt="">
+
+
 # Hardware Preparation
 
 * Set the power jumper, J201, to pins 2 & 3. This sets the module to use USB-C power.
-* Connect the "RNFW02" module to a Windows PC with a "USB-C" cable
+* Connect the "RNFWxx" module to a Windows PC with a "USB-C" cable
 
     <img src="./assets/Rio-0_USB-C_UART+JumperWiring.png" width="400" alt="">
 
-## RNFW02PC Serial Test
+## RNFWxx Serial Test
 
   * With the RNWF02PC module connected via a USB-C cable, verify the _RED_ LED indicating power is illuminated on the board. Its just to the right of the USB-C connector.
   * If not, check the USB cable and verify the driver for the UART has been loaded via Windows Device Manager.
@@ -93,7 +115,7 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
   
     <img src="./assets/LorrisTest.png" width="600" alt="">
    
-### RNFW02PC Serial Port Troubleshooting
+### RNFWxx Serial Port Troubleshooting
 If the module does not respond there a few things to try. These tips were used with the "Lorris Terminal".
 1. Verify the COM port is configured **230400b,8N1** 
 2. Verify the Terminal is set to send "CR + LF" or "\r\n" on transmit. If this is not set, the module will not respond to commands!
@@ -126,7 +148,7 @@ While the terminal is open, we will determine the Wi-Fi "security" setting direc
 
    <img src="./assets/AT+WSCN=0_WIFI+.png" width="600" alt="">
 
-The full list of Wi-Fi security settings are available in the RNFW02's "AT Command Specification" document and listed below.
+The full list of Wi-Fi security settings are available in the RNFWxx's "AT Command Specification" document and listed below.
 
 ```
         0   Open
@@ -218,13 +240,16 @@ NOTE: You can access any of your IoT Central applications in the future by signi
 * A _Device Template_ has been provided with this demo which is set automatically by the script and Azure. No user setup is required. The template defines the demo app's telemetry, parameter and command capabilities.
 
 # Running The Demo
+
 The included python script, "oobDemo.py", is the final step in this process. It consists of 6+1 state machines that execute in order, to establish a secure encrypted TLS connection to the Azure cloud. Data is exchanged bidirectionally. The underlying protocol is based on MQTT v3, or at least Microsoft's version of it.
 
 ### Exiting the Demo
+
 The Python script can be exited at any time by pressing the ESC key _twice_. While the script is running, the first press of the ESC key will enter a Command Line Interface(CLI). While in the CLI, a second press of the ESC key will exit the Python script back to the OS.
 * If the Python script becomes nonresponsive, use **[CTRL-X]** to exit the Python script.
 
 ### oobDemo.py
+
 With the setup complete, the final step is execution of the "oobDemo.py" script. The script will program the RNWF02PC module with the required AT+ commands to connect to _your_ Azure account and begin sending and receiving data.
 
 > The script contains numerous error checks and in most cases will fail gracefully with an indication of what went wrong and how to fix it.
@@ -252,6 +277,7 @@ With the setup complete, the final step is execution of the "oobDemo.py" script.
 
 
 ## Execution
+
 Assuming the initial setup is correct, a series of commands should scroll by on the display. If for some reason the script fails to perform the final connection try and re-run the Python script.
 
    <img src="./assets/DemoStart.png" width="600"/>
@@ -259,6 +285,7 @@ Assuming the initial setup is correct, a series of commands should scroll by on 
    * If any of the commands fail, the script will show the error message and exit to the app's CLI. The CLI can help with debugging issues like an incorrect Wi-Fi parameter or missing TLS certificate, etc. Short of a script bug, all errors can be corrected by editing the "app.cfg" file, editing your Azure account on the web or recreating your device certificates.
 
 ### Interactive Demo 
+
 * When the script completes its execution, the interactive demo itself will be running
 
    <img src="./assets/Demo0+.png" width="800"/>
@@ -270,6 +297,7 @@ Assuming the initial setup is correct, a series of commands should scroll by on 
     <img src="./assets/Demo3+.png" width="600"/>
 
 ### Device to Cloud(D>C) Data
+
    * The demo, from the device side (Python Script), limits data sent to Azure to a preset increment or series of values sent using the single button commands shown above. Telemetry and parameter values are supported. With each press of a command button, 'B', 'C' and 'L', the script will send an incremented "buttonEvent" (1, 2 or 3), "counter" (0 to X) or "LED0" (1,2 or 3) to Azure. "LED0" is not shown here.
   
     <img src="./assets/Demo4D+.png" width="600"/>
@@ -279,6 +307,7 @@ Assuming the initial setup is correct, a series of commands should scroll by on 
    <img src="./assets/DemoI+.png" width="600"/>
 
 ### Cloud to Device(C>D) Commands (Reboot Delay and Message)
+
 Two commands are defined in the provided template. Under the "Commands" tab there is a "Reboot Delay" and a "Message" command. Note "commands" such as this cannot be added to a user created "dashboard"
 
 **"Reboot Delay"**, when sent from Azure, will instruct the RNWF02PC to completely reboot after a specified time period. That period can be in seconds, minutes or hours. The command must follow the syntax shown below. 
@@ -310,7 +339,6 @@ CMD[06.03]: AT+MQTTPUB=0,0,0,"$iothub/methods/res/200/?$rid=1","{\"status\" : \"
 CMD[06.04]: AT+MQTTPUB=0,0,0,"$iothub/methods/res/200/?$rid=1","{\"status\" : \"Failure\"}"
 ```
 
-
 #### Azure Raw Data View
 
 Azure displays all data sent to and from the device in the "Raw data" table. It is not updated in real time, but you have the option of waiting for the update or using the "refresh" button in the upper right corner or a "F5" browser refresh. Note the columns are usually too wide to show everything without scrolling right or changing the column widths.
@@ -318,6 +346,7 @@ Azure displays all data sent to and from the device in the "Raw data" table. It 
 <img src="./assets/Demo4+.png" width="800"/>
 
 ## Azure Dashboard
+
 A simple dashboard for this demo is displayed below. Unfortunately dashboards must be created by the end user as they cannot be exported nor imported. Pressing the Dashboard button on the left takes the user into an online wizard to get started.
 
   1. Select the "Dashboards" button under the "Analyze" category on the left.
@@ -336,7 +365,8 @@ A simple dashboard for this demo is displayed below. Unfortunately dashboards mu
 # How the "oobDemo.py" Works
 
 ## Execution Overview
-The script sends "AT" commands to the RNFW02 module on at a time, waiting for a response "RSP" back from the module or web service. The script will not proceed until it receives a response. If no response is received within the default or programmed timeout period, the script will fail the command and exit to the CLI. Most commands use the original command text as its response text to wait for. These commands are typically Wi-Fi or MQTT programming commands sent to the module and return in less than a second.
+
+The script sends "AT" commands to the RNFWxx module one at a time, waiting for a response "RSP" back from the module or web service. The script will not proceed until it receives a response. If no response is received within the default or programmed timeout period, the script will fail the command and exit to the CLI. Most commands use the original command text as its response text to wait for. These commands are typically Wi-Fi or MQTT programming commands sent to the module and return in less than a second.
 
 Other commands such as the connect to Wi-Fi command, ```AT+WSTA=1```, may take 20s or more for the connection. This command is programmed to wait until it receives a "+TIME" response from the programmed ```Network Time Protocol``` server. Once received, the command is completed and the next AT command processed.
 
@@ -358,7 +388,7 @@ Other commands such as the connect to Wi-Fi command, ```AT+WSTA=1```, may take 2
 
 * The first command, ```AT+SNTPC``` is a setup command and completes in less than a second with a module response string of ```AT+SNTPC```.
   
-  * This command completed almost immediately because its a setup command for the RNFW02 module which can immediately respond.
+  * This command completed almost immediately because its a setup command for the RNFWxx module which can immediately respond.
   
 * The second command, ```AT+WSTA=1```, connects to a Wi-Fi access point and is set to wait until it receives the correct time from the requested NTP server.
 
@@ -434,7 +464,7 @@ Eventually the script will start to execute and commands will start scrolling. O
 
 <img src="./assets/cli_help.png" width="400"/>
 
-At the prompt you can run any of the displayed commands. The table below explains the available command syntax. Feel free to experiment with the "DIR", "SCAN" and "SYS" commands. They are informative commands and will not make any lasting changes to the RNFW02 module. The one command that can and will change the module is the "DEL" commands and is discussed below.
+At the prompt you can run any of the displayed commands. The table below explains the available command syntax. Feel free to experiment with the "DIR", "SCAN" and "SYS" commands. They are informative commands and will not make any lasting changes to the RNFWxx module. The one command that can and will change the module is the "DEL" commands and is discussed below.
 
 |CLI Command|Parameters|Syntax|Description|
 |:-----:|:--:|:-----------:|:---------|
@@ -447,7 +477,9 @@ At the prompt you can run any of the displayed commands. The table below explain
 |ESC|0|Press 'ESC' key|Exits the script to the OS|
 
 ### Listing Certificates and Keys on the RNWF02PC module
+
 Once the CLI has been entered you can use the _DIR_ CLI command to list the installed certificates and keys.
+
 1. Use the CLI command "dir c" or "dir k".
 2. You should see a display like this:
   
@@ -458,6 +490,7 @@ Once the CLI has been entered you can use the _DIR_ CLI command to list the inst
 ### Deleting Certificates and Keys from the RNWF02PC module
 
 Once the CLI has been entered you can use the _DEL_ and _DIR_ CLI commands to delete and list the certificates and keys respectively.
+
 1. First list the installed certificate or certificate keys as shown above in [Listing Certificates and Keys on the RNWF02PC module](#listing-certificates-and-keys-on-the-rnwf02pc-module)
 2. If deleting a key enter, the command "del k [FILENAME]" and press enter. eg: "del k RNFW02-Dev99"
    * For the [FILENAME], capitalization matters. eg: "del k rnfw02-dev99" will not work.
@@ -513,12 +546,15 @@ The config file name, "app.cfg" is hard coded in the Python script. If the user 
   ```
 
 ### COM Port Setting Auto-Detection
-The "comm_port" value is the only setting that should be left blank if possible. When this value is blank, "", the script will auto-detect the RNFW02 device and set the COM port automatically. The device is detected by sending an identification ```AT+GMM``` command. If the device returns the model specified in the "app.cfg" file, "model":**"RNWF02PC"**, that port is used.
+
+The "comm_port" value is the only setting that should be left blank if possible. When this value is blank, "", the script will auto-detect the RNFWxx device and set the COM port automatically. The device is detected by sending an identification ```AT+GMM``` command. If the device returns the model specified in the "app.cfg" file, "model":**"RNWF02PC"**, that port is used.
 
 #### Before Manually Setting the COM Port
+
 If the device is not powered on or the COM port is not recognized by the OS, setting the port manually will have NO EFFECT. The device MUST be able to communicate with the PC from within a properly configured terminal __BEFORE__  auto-detection will work.
 
 **Check These First**
+
 1. Do you have a terminal open on the same port? Disconnect the terminal and try again.
 2. Disconnect any additional modules or USB-to-UART adapters connected to the PC.
 3. Is the terminal configured for the correct __ENTER__ behavior set as "\r\n" (Carriage Return + Newline)?
@@ -535,6 +571,7 @@ If the device is not powered on or the COM port is not recognized by the OS, set
 - i.e. "comm_port": "COM12",
 
 ### Working with a Single App.cfg file
+
 The configuration file is quite flexible in its syntax as long as it remains in pure JSON format, i.e. no missing comma's or quotes.
 
 When the config file is read, each parameter is checked against a list of supported variables.
@@ -544,6 +581,7 @@ When the config file is read, each parameter is checked against a list of suppor
 * If multiple variables of the same name are encountered, each are read, but only the <ins>last one</ins> is stored and used by the Python script.
 
 #### APP.CFG 'comments'
+
 JSON unfortunately does not support comments, however the Python script will ignore any "unknown" strings it encounters. This functionality allows for user comments. Any line added to the file, that is not recognized as a valid parameters will be ignored.
 
 To prevent being prompted for a value, make sure each "comment" parameter has at least a single character "value" such as an underscore '_'. White space will not work.
@@ -558,6 +596,7 @@ To prevent being prompted for a value, make sure each "comment" parameter has at
 ```
 
 #### APP.CFG Multiple Values of the Same Name
+
 The same variable name can be listed in the file multiple times. This allows a single config file to support multiple Wi-Fi networks. To change the network the user just has to move the desired variable to be the last ones read in the config file.
 ```
 {
@@ -586,7 +625,7 @@ The same variable name can be listed in the file multiple times. This allows a s
 <img src="./assets/app_cfg.png" width="600"/>
 
 ### _App.cfg_ - User Prompted During Demo (YELLOW)
- 
+
 The table below shows the 5 parameters needed to connect the RNWF02PC to an Azure cloud account. This does not include the COM port which should auto detect and 2 Azure DPS registration settings which are handled during Azure's DPS process.
 
 |App.cfg "field"|Source Azure/Script/User|Setup Step|Description|
@@ -602,6 +641,7 @@ The table below shows the 5 parameters needed to connect the RNWF02PC to an Azur
 
 
 ### _App.cfg_ - Do Not Change, Auto-Set by Demo (BLUE)
+
 After a user has setup their Azure application, the DPS process commands returns the values for the "operation_id" and "assigned_id" and the script automatically sets them in the "app.cfg" file. If the user desires to re-DPS, setting both of these to an empty string will cause DPS to run again at least once regardless of "force_dps_reg" setting.
 
 |App.cfg "field"|Source Azure/Script/User|Setup Step|Description|
@@ -621,6 +661,7 @@ After a user has setup their Azure application, the DPS process commands returns
 <img src="./assets/disp_levels+.png" width="800"/>
 
 ### _App.cfg_ - DO NOT CHANGE (RED)
+
 These values are specific to Azure and must not be changed. Changing any of these value will prevent the device from connecting to Azure.
 * The 'ntp_server' field should not be adjusted if NTP time is aquired and is working for this demo. If however the NTP server does not work in your locale, change the field to a more local server and retest.
 * The 'device_template' is preset in the Azure cloud and provided by Microchip during DPS registration. It defines all the telemetry, parameter and commands supported by this demo. This setting should work for the demo and should not need to be changed. If for some reason it is not automatically set, the original device template can be manually uploaded to your Application from the Azure app site. The file is available in the "\Tools\DeviceTemplate" folder of this project.
