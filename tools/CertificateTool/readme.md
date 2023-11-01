@@ -1,6 +1,6 @@
-<a href="https://www.microchip.com"><p align="left"><img src="../../assets/MicrochipLogoHorizontalBlackRed.png" width="350" alt=""></a>
+<a href="https://www.microchip.com"><p align="left"><img src="assets/MicrochipLogoHorizontalBlackRed.png" width="350" alt=""></a>
 
-# **Create Self-Signed Certificates using Git Bash**
+# Create Self-Signed Certificates using Git Bash
 Creating the required self-signed device certificates is semi-automated and only takes a few seconds. There are 2 methods included with this tool. 
 
 The first creates a certificate chain after entering the user chosen "Common Name". Three certificates are then created and posted in a subdirectory ready to use.
@@ -17,44 +17,41 @@ The second method involves running 2 scripts from a Git Bash terminal. The resul
 
 ## First Method: "Auto.cmd"
 1. Use Windows File Explorer to open the folder **"_[YOUR_PROJECT_FOLDER]_\tools\CertificateTool"**
-2. Double click on the file "auto" or "auto.cmd" (if 'how file extensions' turned on).
-3. At the prompt enter a "common name" that is no more than 23 characters long with no spaces.
+2. Double click on the file "auto" or "auto.cmd" (if 'show file are extensions' turned on).
+3. At the prompt, enter a "common name" that is no more than 23 characters long with no spaces.
 4. After a moment the certificates will be generated and placed in a subdirector named after your chosen "common name".<br>
    The certificates will be located here:
    ```
    [YOUR_PROJECT_FOLDER]_\tools\CertificateTool\CertBuilds\[YOUR_COMMON_NAME]\
    ```
-   |||
+
+   | | |
    |:-:|:-:|
-   |<p align="center"><img src="../../assets/CertAuto.png" height="170"/></p> |<p align="center"><img src="../../assets/CertAuto2.png" width="370"/></p>  |
-   |||
+   |<img src="assets/CertAuto.png" height="170"/>|<img src="assets/CertAuto2.png" width="370"/>|
+
 
 ### First Method Results
 1. After a successful run, the tool should have created a new subdirectory structure similiar to this **".\CertBuilds\\[COMMON_NAME]"**.
-1. The 3 certificates needed, are located in the "common name" sub-directory. The entire "build" directory structure is also located here, but this is not needed for the demo.
+2. The 3 certificates needed, are located in the "common name" sub-directory. The entire "build" directory structure is also located here, but this is not needed for the demo.
    * *Note: If the script is run again using the same "common name", all 3 certificates will be different than the first run. In other words, the two  device certificates will have to be uploaded to the device again as well as the certificate to Azure!*
    
-   <p align="left"><img src="../../assets/cert_autoDirStruct+.png" width="600" alt="">
+<img src="assets/cert_autoDirStruct+.png" width="600">
 
-The entire certificate build directory structure is stored in the subdirectory **".\CertBuilds\\[COMMON_NAME]\build'**. 
+* The entire certificate build directory structure is stored in the subdirectory **".\CertBuilds\\[COMMON_NAME]\build"**.
 
-The same certificate files are located [here](#second-method-results) and can be used to create additional subordinate certificates if desired.
-
+* The same certificate files are located in the subdirectory "\build". A reference to the directory structure can be found [here](#second-method-results). Files in the build folder and can be used to create additional subordinate certificates if needed.
 
 ## Second Method: Git Bash Scripts
 1. Right-click on the "CertificateTool" folder or the folder where this document exists and select "Open Git Bash"
    * If the "Open Git Bash" is not shown you will need to open "Git Bash" from the Start menu and manually navigate to the this projects subfolder "_[YOUR_PROJECT_FOLDER]_/tools/CertificateTool" folder
-
-
    * Make sure the Bash terminal is in the **"_[YOUR_PROJECT_FOLDER]_\tools\CertificateTool" folder**
   
     |File Explorer R-Click|Git Bash|
     |:------:|:-----------:|
-    |  <p align="center"><img src="../../assets/R-Click_GitBash.png" height="300"/><br>|  <p align="center"><img src="../../assets/GitBash_.png" width="500"/><br>
-    |||
+    |<img src="assets/R-Click_GitBash.png" height="300"/>|<img src="assets/GitBash_.png" width="500"/>|
 
 
-3. Execute the first script with the command below. This will create the required directory structure for the next step.
+2. Execute the first script with the command below. This will create the required directory structure for the next step.
    
        ```
         sh ./create_initial_setup.sh [ENTER]
@@ -71,9 +68,9 @@ The same certificate files are located [here](#second-method-results) and can be
 
     * When complete, 3 new folders were created...
 
-      <p align="left"><img src="../../assets/Certs3folders.png" width="420"/></p>
+      <p align="left"><img src="assets/Certs3folders.png" width="420"/></p>
 
-1. Now the 2nd script is executed just like the first. This will create the certificates we need. For this step we need to enter 1 string value, the "Common Name" for our device such as **"RNFW02-Dev99"**. 
+3. Now the 2nd script is executed just like the first. This will create the certificates we need. For this step we need to enter 1 string value, the "Common Name" for our device such as **"RNFW02-Dev99"**. 
  
    ```
     sh ./create_device_certificate.sh [ENTER]
@@ -90,7 +87,6 @@ The same certificate files are located [here](#second-method-results) and can be
 
 Once complete, the directory structure will contain the 3 certificates needed for a secure, TLS encrypted connection to Azure. Two of those certificates are flashed into the module, while the third is uploaded to cloud provider.
 
-|||
+| | |
 |:------|:-----------:|
-|'RNFW02-Dev99.key' => Device<br>'RNFW02-Dev99.pem' => Device<br><br>'subca.crt' => Azure Cloud|<p align="center"><img src="../../assets/CertDirStructOr+.png" width=300/></p>|
-|||
+|'RNFW02-Dev99.key' => Device<br>'RNFW02-Dev99.pem' => Device<br><br>'subca.crt' => Azure Cloud|<img src="assets/CertDirStructOr+.png" width=300/>|

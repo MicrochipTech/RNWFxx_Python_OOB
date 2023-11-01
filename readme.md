@@ -4,14 +4,14 @@
 
 ## Introduction
 
-This document describes how to connect a Microchip RNWF02PC to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is made possible by connecting Microchip's RNWF02PC module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
+This document describes how to connect a Microchip RNFWxx to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is made possible by connecting Microchip's RNFWxx module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
 
 ### References
 
 * [RNWFxx Application Developer's Guide](https://internal.onlinedocs.microchip.com/oxy/GUID-D0CB3D06-2ABE-4892-963E-65CAE080D507-en-US-1/index.html) <img src="./assets/todo.png" width="35">
 * [pyDFU Firmware Flashing Tool](https://microchiptechnology.sharepoint.com/:u:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/rio0_pydfu-main@2dc83c1b8f2.zip?csf=1&web=1&e=DyUEvr) <img src="./assets/tbd.png" width="35">
   
-#### RNFW02
+#### RNWF02
   * [Wi-FI Module Datasheet](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Wi-Fi%20Module%20Data%20Sheet.pdf?csf=1&web=1&e=GAHeDe) <img src="./assets/tbd.png" width="35">
   * [Add On Board User's Guide](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Add%20On%20Board%20User%27s%20Guide.pdf?csf=1&web=1&e=ilDLpz) <img src="./assets/tbd.png" width="35">
   * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
@@ -83,7 +83,7 @@ The Python script **"oobDemo.py"** uses an external JSON file to record various 
 # Clone this Repository
 
 Create a clone of this [repository](https://github.com/MicrochipTech/RNWF02) using the [Git](https://git-scm.com) tool in a command line window
-
+<img src="./assets/todo.png" width="35" alt="">
 ```bash
 git clone https://github.com/MicrochipTech/RNWF02
 ```
@@ -102,7 +102,7 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
 
 ## RNFWxx Serial Test
 
-  * With the RNWF02PC module connected via a USB-C cable, verify the _RED_ LED indicating power is illuminated on the board. Its just to the right of the USB-C connector.
+  * With the RNFWxx module connected via a USB-C cable, verify the _RED_ LED indicating power is illuminated on the board. Its just to the right of the USB-C connector.
   * If not, check the USB cable and verify the driver for the UART has been loaded via Windows Device Manager.
 * If the new COM port is known, set that in the Terminal program.
   * Configure the port for **230400b,8N1** once enumerated after plugging in the board.
@@ -132,7 +132,7 @@ If the module does not respond there a few things to try. These tips were used w
 > _wifi_passphrase_ = Set the passphrase for the device<br>
 > _wifi_security_ = Determined in Step 5 below<br>
 
-While the terminal is open, we will determine the Wi-Fi "security" setting directly from the device. The security setting used by the RNWF02PC is represented by a single digit number. Each number represents WPA2, WPA3, etc and must be programmed in a later step. All we need is the SSID and a single command entered in the terminal.
+While the terminal is open, we will determine the Wi-Fi "security" setting directly from the device. The security setting used by the RNWFxx is represented by a single digit number. Each number represents WPA2, WPA3, etc and must be programmed in a later step. All we need is the SSID and a single command entered in the terminal.
 
 1. With the Terminal open and communication established. 
 1. Enter the command ```AT+WSCN=0``` and press [ENTER].
@@ -162,9 +162,9 @@ The full list of Wi-Fi security settings are available in the RNFWxx's "AT Comma
 
 # Device Provisioning and Cloud Resources Setup
 
-## Step 1 - Provision the RNWF02PC Module
+## Step 1 - Provision the RNWFxx Module
 
-For secure connections, a chain of trust (which includes certificates & keys for the root, signer, and client) needs to be generated and programmed into the RNWF02PC module.
+For secure connections, a chain of trust (which includes certificates & keys for the root, signer, and client) needs to be generated and programmed into the RNWFxx module.
 
 The device (client) certificate file will be needed when we create the device in This demo for the Azure IoT Central demo uses the group enrollment method which requires uploading the signer certificate file to the Azure IoT Central application. 
 
@@ -184,23 +184,23 @@ This simplified process limits the certificate tree to a *single* device to a *s
 
 For this demo follow the instructions shown here:  
 
-### [First Method: "Auto.cmd"](./tools/CertificateTool/Self-Signed%20Certificates.md)
+### [First Method: "Auto.cmd"](./tools/CertificateTool/readme.md)
 
 
-## Installing Certificates to the RNWF02PC module
-We will use the previously installed **sentTo_tool** to flash both the device certificate and device key certificate to the RNWF02PC.
+## Installing Certificates to the RNWFxx module
+We will use the previously installed **sentTo_tool** to flash both the device certificate and device key certificate to the RNWFxx.
 * Open a Windows Explorer window and locate the certificate folder from the previous step. It should be something like this:
-* From Windows Explorer "right-click" on your device "key" file eg: "RNFW02-Dev99.key"
+* From Windows Explorer "right-click" on your device "key" file eg: "RNWF02-Dev99.key"
 * Then click on the "CERT-KEYFlash" in the menu to upload the "key" file.
 
   <img src="./assets/CertDirStructRC1CmdK+.png" width="600" alt="">
 
-* Repeat the process for the file "RNFW02-Dev99.pem"
+* Repeat the process for the file "RNWF02-Dev99.pem"
 
   <img src="./assets/CertDirStructRC1CmdC+.png" width="600" alt="">
 
 * The final certificate, the RootCA "intermediate" certificate for the device, will be uploaded to Azure during the Azure app setup.
-* DO NOT UPLOAD the intermediate file ```"subca.crt"``` to the RNWF02PC module. It will not work.
+* DO NOT UPLOAD the intermediate file ```"subca.crt"``` to the RNWFxx module. It will not work.
 
 ## Azure IoT Central Applications
 
@@ -248,7 +248,7 @@ The Python script can be exited at any time by pressing the ESC key _twice_. Whi
 
 ### oobDemo.py
 
-With the setup complete, the final step is execution of the "oobDemo.py" script. The script will program the RNWF02PC module with the required AT+ commands to connect to _your_ Azure account and begin sending and receiving data.
+With the setup complete, the final step is execution of the "oobDemo.py" script. The script will program the RNWFxx module with the required AT+ commands to connect to _your_ Azure account and begin sending and receiving data.
 
 > The script contains numerous error checks and in most cases will fail gracefully with an indication of what went wrong and how to fix it.
 > Common Issues:
@@ -308,7 +308,7 @@ Assuming the initial setup is correct, a series of commands should scroll by on 
 
 Two commands are defined in the provided template. Under the "Commands" tab there is a "Reboot Delay" and a "Message" command. Note "commands" such as this cannot be added to a user created "dashboard"
 
-**"Reboot Delay"**, when sent from Azure, will instruct the RNWF02PC to completely reboot after a specified time period. That period can be in seconds, minutes or hours. The command must follow the syntax shown below. 
+**"Reboot Delay"**, when sent from Azure, will instruct the RNWFxx to completely reboot after a specified time period. That period can be in seconds, minutes or hours. The command must follow the syntax shown below. 
 
 * Syntax: PT#?, where '#" is the value for seconds, minutes or hours and '?' must be "S", "M" or "H"
   * Examples:
@@ -414,9 +414,9 @@ Other commands such as the connect to Wi-Fi command, ```AT+WSTA=1```, may take 2
 
 There are 6+1 state machine "states" that run from state 1 to 6. States 1 through 5 perform increasingly important tasks from Wi-Fi settings, Azure DPS, MQTT and finally the Demo itself in state 6.
 
-State 0 represents a pseudo state, the +1 state (0). It is the Command Line Interface(CLI) and can be used for debug or sending AT+ commands to the RNWF02PC module.
+State 0 represents a pseudo state, the +1 state (0). It is the Command Line Interface(CLI) and can be used for debug or sending AT+ commands to the RNWFxx module.
 
-Entering the zero state can be done any time after the initial RNWFO2 reset has completed by pressing the "ESC" one time. While in the zero state, a second press of the "ESC" exits the script to the OS. Sometimes an "ESC" results in a loss of communication with the RNWF02PC. _If this occurs, use "CTRL-C" to terminate the script and retry._
+Entering the zero state can be done any time after the initial RNWFxx reset has completed by pressing the "ESC" one time. While in the zero state, a second press of the "ESC" exits the script to the OS. Sometimes an "ESC" results in a loss of communication with the RNWFxx. _If this occurs, use "CTRL-C" to terminate the script and retry._
 
 ### State Machine Generalities
 
@@ -452,7 +452,7 @@ States 1 though 5 all perform in a similar manner. Each sub-state within a state
 
 The CLI can be executed any time after the initial script "reset" command or about 4 seconds after the Python script starts.
 
-The CLI state will be entered anytime the user presses **[ESC]** one time during script execution. The CLI state is automatically entered if an error is reported back from the RNWF02PC or the Azure cloud. If CLI entry was caused by an error, the command and response, displayed just prior to the error, should be reviewed. Some errors are decoded and provided on the display showing the likely cause and solution.
+The CLI state will be entered anytime the user presses **[ESC]** one time during script execution. The CLI state is automatically entered if an error is reported back from the RNWFxx or the Azure cloud. If CLI entry was caused by an error, the command and response, displayed just prior to the error, should be reviewed. Some errors are decoded and provided on the display showing the likely cause and solution.
 
 If the user needs access to the CLI before completing demo steps, they will likely be prompted for parameters they do not have yet. This includes Wi-Fi parameters. To get around this, enter something like "junk" at each prompt, and  number such as '3' at the Wi-Fi security prompt (it has to be number).
 
@@ -468,13 +468,13 @@ At the prompt you can run any of the displayed commands. The table below explain
 |:-----:|:--:|:-----------:|:---------|
 |HELP|0|help|Displays CLI help|
 |AT+|-|AT+XXX=yyy|Any module supported AT+ command with or without "AT+".<br>Capitalization matters with AT+ commands<br>example: **AT+WSTA=1 or +WSTA=1 are equivalent**|
-|DIR|2|dir [c\|k]|Lists certificates or keys stored in the RNWF02PC<br>example: **list c**|
-|DEL|3|del [c\|k] filename|Deletes certificates or keys stored in the RNWF02PC<br>example: **del k myCertificateKey**|
+|DIR|2|dir [c\|k]|Lists certificates or keys stored in the RNWFxx<br>example: **list c**|
+|DEL|3|del [c\|k] filename|Deletes certificates or keys stored in the RNWFxx<br>example: **del k myCertificateKey**|
 |SCAN|0|scan|Passively scans & displays available Wi-Fi routers/access points|
 |SYS|0|sys|Displays network, firmware and files system information|
 |ESC|0|Press 'ESC' key|Exits the script to the OS|
 
-### Listing Certificates and Keys on the RNWF02PC module
+### Listing Certificates and Keys on the RNWFxx module
 
 Once the CLI has been entered you can use the _DIR_ CLI command to list the installed certificates and keys.
 
@@ -485,20 +485,20 @@ Once the CLI has been entered you can use the _DIR_ CLI command to list the inst
 |:-----:|:-----------:|
 |<img src="./assets/dirkey.png" width="200"/>|<img src="./assets/dircert.png" width="200"/>|
 
-### Deleting Certificates and Keys from the RNWF02PC module
+### Deleting Certificates and Keys from the RNWFxx module
 
 Once the CLI has been entered you can use the _DEL_ and _DIR_ CLI commands to delete and list the certificates and keys respectively.
 
-1. First list the installed certificate or certificate keys as shown above in [Listing Certificates and Keys on the RNWF02PC module](#listing-certificates-and-keys-on-the-rnwf02pc-module)
-2. If deleting a key enter, the command "del k [FILENAME]" and press enter. eg: "del k RNFW02-Dev99"
-   * For the [FILENAME], capitalization matters. eg: "del k rnfw02-dev99" will not work.
+1. First list the installed certificate or certificate keys as shown above in [Listing Certificates and Keys on the RNWFxx module](#listing-certificates-and-keys-on-the-RNWFxx-module)
+2. If deleting a key enter, the command "del k [FILENAME]" and press enter. eg: "del k RNWF02-Dev99"
+   * For the [FILENAME], capitalization matters. eg: "del k rnwf02-dev99" will not work.
 3. If the delete was successful you should receive a message similar to the ones shown below.
    
 4. You can double check by re-displaying the list with the "dir c" or "dir k" commands. The certificate or key should no longer display.
 
 |**Delete Certificate Keys (del k XXX)**|**Delete Certificates (del c XXX)**|
 |:-----:|:-----------:|
-|<img src="./assets/dirkeyresult.png" width="250"/>|<img src="./assets/dircertresult.png" width="250"/>|
+|<img src="./assets/dirkeyresult.png" width="300"/>|<img src="./assets/dircertresult.png" width="300"/>|
 
 ### Warning
 
@@ -624,7 +624,7 @@ The same variable name can be listed in the file multiple times. This allows a s
 
 ### _App.cfg_ - User Prompted During Demo (YELLOW)
 
-The table below shows the 5 parameters needed to connect the RNWF02PC to an Azure cloud account. This does not include the COM port which should auto detect and 2 Azure DPS registration settings which are handled during Azure's DPS process.
+The table below shows the 5 parameters needed to connect the RNWFxx to an Azure cloud account. This does not include the COM port which should auto detect and 2 Azure DPS registration settings which are handled during Azure's DPS process.
 
 |App.cfg "field"|Source Azure/Script/User|Setup Step|Description|
 |:--|:--:|:--:|:--|
@@ -675,4 +675,4 @@ These values are specific to Azure and must not be changed. Changing any of thes
 |"ntp_server"|"0.in.pool.ntp.org"|Default Network Time Protocol server. Can be changed for your region if desired|
 |"model"|"RNWF02PC"|Default Microchip RNWFxx module.|
 |"mqtt_password"|"NA"|MQTT password is not required for Azure's secure and encrypted MQTT service.|
-|"mqtt_version"|"3"|MQTT v3 is supported by Azure. MQTT v5 is not yet supported by Microsolft|
+|"mqtt_version"|"3"|MQTT v3 is supported by Azure. MQTT v5 is not yet supported by Microsoft|
