@@ -177,7 +177,10 @@ Any device which presents a leaf certificate that was derived from the signer (o
 
 >
 ## Generate the Files for Your Chain of Trust
-Creating the required self-signed device certificates is semi-automated and only takes a few seconds. The Windows command script, "auto.cmd", prompts the user for a "common name" and then calls two Bash scripts to complete the certificate creation process. These certificates are used later in the "Python oobDemo.py" step below, so take note of the name specified. <br>
+Creating the required self-signed device certificates is semi-automated and only takes a few seconds. The Windows command script, "auto.cmd", prompts the user for a "common name" and then calls two Bash scripts to complete the certificate creation process. These certificates are used later in the "Python oobDemo.py" step below, so take note of the name specified.<br>
+
+The scripts used are based on the [Azure's Create and Upload Certificates for Testing](https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows) tutorial.
+
 Once these certificates are created, they will be _linked_ to the device Azure creates and cannot be updated without recreating the certificates and reconfiguring Azure.
 
 This simplified process limits the certificate tree to a *single* device to a *single* subordinate root certificate. It does not support multiple devices from a single  root certificate.
