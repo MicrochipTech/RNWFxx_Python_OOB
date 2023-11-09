@@ -27,7 +27,7 @@ The second method involves running 2 scripts from a Git Bash terminal. The resul
 
    | | |
    |:-:|:-:|
-   |<img src="assets/CertAuto.png" height="170"/>|<img src="assets/CertAuto2.png" width="370"/>|
+   |<img src="assets/CertAuto.png" height="130"/>|<img src="assets/CertAuto2.png" width="450"/>|
 
 
 ### First Method Results
@@ -70,7 +70,7 @@ The second method involves running 2 scripts from a Git Bash terminal. The resul
 
       <p align="left"><img src="assets/Certs3folders.png" width="420"/></p>
 
-3. Now the 2nd script is executed just like the first. This will create the certificates we need. For this step we need to enter 1 string value, the "Common Name" for our device such as **"RNFW02-Dev99"**. 
+3. Now the 2nd script is executed just like the first. This will create the certificates we need. For this step we need to enter 1 string value, the "Common Name" for our device such as **"RNWF02-Dev99"**. 
  
    ```
     sh ./create_device_certificate.sh [ENTER]
@@ -79,7 +79,7 @@ The second method involves running 2 scripts from a Git Bash terminal. The resul
    * Choose a unique name containing only **letters, numbers** or the **'-'** character. Take note of your common name.
    * Make sure the name is **23 characters** or less long.
    ```
-    Enter the unique Device ID(Common Name):- RNFW02-Dev99 [ENTER "Common Name"]
+    Enter the unique Device ID(Common Name):- RNWF02-Dev99 [ENTER "Common Name"]
     Enter the subCa folder(Default=subca):-                [ENTER]
    ```
 
@@ -89,4 +89,4 @@ Once complete, the directory structure will contain the 3 certificates needed fo
 
 | | |
 |:------|:-----------:|
-|'RNFW02-Dev99.key' => Device<br>'RNFW02-Dev99.pem' => Device<br><br>'subca.crt' => Azure Cloud|<img src="assets/CertDirStructOr+.png" width=300/>|
+|'RNWF02-Dev99.key' => Device<br>'RNWF02-Dev99.pem' => Device<br><br>'subca.crt' => Azure Cloud|<img src="assets/CertDirStructOr+.png" width=300/>|

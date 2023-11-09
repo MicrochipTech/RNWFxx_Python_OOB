@@ -10,7 +10,7 @@ To complete the Enrollment Group setup, use the [**Self-Signed Certificates**](.
 
 ### Creating an Enrollment Group
 This setting will allow your new device to automatically connect in a later step
-1. First select the "Permisions" option in the left menu.
+1. First select the "Permisions" option in the left menu
 2. Then select "Device connection groups" to view the "ID Scope" field
    > ## App.cfg Setting
    > _id_scope_ = Value from the "ID Scope" field on this page <br>
@@ -19,6 +19,7 @@ This setting will allow your new device to automatically connect in a later step
 
 
 3. At the top of the pane, press the "+New" button.
+   
    <img src="./assets/AzureBuildApp13+.png" width="700"/>
 
 4. In this dialog we will link our device certificate with parent "intermediate" X.509 certificates we created earlier.
@@ -28,6 +29,7 @@ This setting will allow your new device to automatically connect in a later step
    * Set the "Attestation type" to _"Certificates (X.509)"_ as shown.
    * When complete press the "Save" button near the top of the screen.
      * In the next step we will upload the actual certificate to Azure.
+  
        <img src="./assets/AzureBuildApp14+.png" width="700"/>
 
 5. Uploading the device's X.509 Intermediate Certificate to Azure
@@ -49,7 +51,7 @@ This setting will allow your new device to automatically connect in a later step
 
    * If you have followed the naming conventions from this demo, the file name should be **"subca.crt"**
 
-   <img src="./assets/cert_autoDirStruct2+.png" width="500" alt="">
+   <img src="./assets/cert_autoDirStruct+.png" width="500" alt="">
   
    <img src="./assets/AzureBuildApp17+.png" width="700"/>
 

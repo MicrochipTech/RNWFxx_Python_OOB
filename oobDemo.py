@@ -1288,9 +1288,9 @@ class AzCloud:
                     banner(help_str_6, BANNER_BORDER_LEV_2)
                 #
                 # Sends TELEMETRY 'buttonEvent' [0|1] ==> Azure. Increments the button state.push_count on each execution
-                #       CMD: AT+MQTTPUB=0,0,0,"devices/RNFW02-Dev99/messages/events/","{\"buttonEvent\":
+                #       CMD: AT+MQTTPUB=0,0,0,"devices/RNWF02-Dev99/messages/events/","{\"buttonEvent\":
                 #            {\"button_name\": \"SW0\",\"press_count\": 1}}"
-                #       RSP: AT+MQTTPUB=0,0,0,"devices/RNFW02-Dev99/messages/events/","{\"buttonEvent\":
+                #       RSP: AT+MQTTPUB=0,0,0,"devices/RNWF02-Dev99/messages/events/","{\"buttonEvent\":
                 #            {\"button_name\": \"SW0\",\"press_count\": 1}}" [OK]
 
                 # Azure: Does accept telemetry updates but does not acknowledge the update back
