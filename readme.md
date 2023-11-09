@@ -299,11 +299,11 @@ Assuming the initial setup is correct, a series of commands should scroll by on 
 
 ### Device to Cloud(D>C) Data
 
-   * The demo, from the device side (Python Script), limits data sent to Azure to a preset increment or series of values sent using the single button commands shown above. Telemetry and parameter values are supported. With each press of a command button, 'B', 'C' and 'L', the script will send an incremented "buttonEvent" (1, 2 or 3), "counter" (0 to X) or "LED0" (1,2 or 3) to Azure. "LED0" is not shown here.
+* The demo, from the device side (Python Script), limits data sent to Azure to a preset increment or series of values sent using the single button commands shown above. Telemetry and parameter values are supported. With each press of a command button, 'B', 'C' and 'L', the script will send an incremented "buttonEvent" (1, 2 or 3), "counter" (0 to X) or "LED0" (1,2 or 3) to Azure. "LED0" is not shown here.
   
-    <img src="./assets/Demo4D+.png" width="600"/>
+   <img src="./assets/Demo4D+.png" width="600"/>
 
-   * The command button "I" increments the "counter" value, waits for a "reportRate" value in seconds and repeats this 10 times. Each time the "I" command is used, the "reportRate" cycle through the series of values in seconds 0, 2, 5 & 10 then back to 0.
+* The command button "I" increments the "counter" value, waits for a "reportRate" value in seconds and repeats this 10 times. Each time the "I" command is used, the "reportRate" cycle through the series of values in seconds 0, 2, 5 & 10 then back to 0.
   
    <img src="./assets/DemoI+.png" width="600"/>
 
