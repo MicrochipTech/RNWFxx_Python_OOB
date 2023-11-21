@@ -47,7 +47,7 @@ The demo requires a few basic steps, which includes signing up for a Microsoft A
 ## Configuration with "app.cfg"
 The Python script **"oobDemo.py"** uses an external JSON file to record various parameters. Without getting into too much detail, those required parameters will be highlighted with a document section similar to the one below. When encountering these sections, take note of the specified parameters. When the Python demo is run, it will prompt the user for these parameters.
 
-> ## App.cfg Setting
+> ## App.cfg Setting [More Info](#appcfg-settings)
 > _STRING_SETTING_ = Setting(s) to remember during _this_ step will be shown here. . .
 
 # Software Prerequisites and Installation
