@@ -44,7 +44,6 @@ MAX_VALUE_LEN = 256
 #   Some blank fields will not prompt the user for input as they are not
 #   required for Azure secure connections
 # 
-_COMM_PORT =            ""      # Empty quotes to auto detect OR "COMx" for manual assign
 _WIFI_SSID =            ""      # Wi-Fi SSID
 _WIFI_PASSPHRASE =      ""      # Wi-Fi Passphrase
 _WIFI_SECURITY_TYPE =   ""      # Ref +WSTAC command in "AT Command Specification"
@@ -87,12 +86,10 @@ _DEVICE_TEMPLATE =      "dtmi:com:Microchip:AVR128DB48_CNANO;1"
 # REQUIRED NTP Time server. Adjust if needed for proper UTC time
 _NTP_SERVER =           "0.in.pool.ntp.org"     # i.e. time.google.com"
 
-# 
-_MODEL =                "RNWF02"    # Set for this product
 
 _MQTT_PASSWORD =        "NA"        # Not used, do not set
 _MQTT_VERSION =         "3"         # MQTT v3 or MQTT v5
-_MQTT_KEEP_ALIVE =      "120"       # Seconds to keep MQTT session open
+_MQTT_KEEP_ALIVE =      "45"        # Seconds to keep MQTT session open
 
 # Search 'oobDemo.py' for definition of "APP_DISPLAY_LEVEL"
 _DISPLAY_LEVEL =        "3"         # Enable additional CLI output & info
@@ -102,7 +99,10 @@ _DISPLAY_LEVEL =        "3"         # Enable additional CLI output & info
                                         # 2 - Display info and events & lower
                                         # 3 - Display 'Demo' IOTC data and lower
                                         # 4 - Display Decodes like JSON & lower
-_AT_COMMAND_TIMEOUT =   "45"        # Default AT+ command timeout in seconds
+_AT_COMMAND_TIMEOUT =   "60"        # Default AT+ command timeout in seconds
+_LOG_FILE_SPEC =        "%M.log"    # Default log file name; %M=Model, %D=Date, %T=Time
+                                    # i.e: "%M_%D@%T.log" would create
+                                    #      "RNWF02_NOV-01-2023@10-45-59.txt"
 
 class iot_parameters:
     """ Class handles reading, writing and validating the 
@@ -117,10 +117,9 @@ class iot_parameters:
         self.filename = filename
         self.file_was = "READ"
         self.display_params = disp_params
-        self.no_prompt_keys = {"comm_port", "operation_id", "assigned_hub", "display_level"}
+        self.no_prompt_keys = {"operation_id", "assigned_hub", "display_level", "log"}
         self.params = dict(
                            # User setting for Wi-Fi communications
-                           comm_port=_COMM_PORT,
                            wifi_ssid=_WIFI_SSID,
                            wifi_passphrase=_WIFI_PASSPHRASE,
                            wifi_security=_WIFI_SECURITY_TYPE,
@@ -136,6 +135,8 @@ class iot_parameters:
                            # Auto set during Azure DPS
                            operation_id=_OPERATION_ID,
                            assigned_hub=_ASSIGNED_HUB,
+
+                           # User Option to force DPS regardless of OperationID or AssignedHub
                            force_dps_reg=_FORCE_DPS_REG,
 
                            # Defaults for Azure...no setting required
@@ -145,12 +146,12 @@ class iot_parameters:
                            tls_device_server=_TLS_DEVICE_SERVER,
                            device_template=_DEVICE_TEMPLATE,
                            ntp_server=_NTP_SERVER,
-                           model=_MODEL,
                            mqtt_password=_MQTT_PASSWORD,
                            mqtt_version=_MQTT_VERSION,
                            mqtt_keep_alive=_MQTT_KEEP_ALIVE,
                            display_level=_DISPLAY_LEVEL,
-                           at_command_timeout=_AT_COMMAND_TIMEOUT
+                           at_command_timeout=_AT_COMMAND_TIMEOUT,
+                           log=_LOG_FILE_SPEC
                           )
         try:
             self.read()

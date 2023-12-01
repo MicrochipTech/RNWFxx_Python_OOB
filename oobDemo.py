@@ -23,6 +23,7 @@ try:
     import serial  
     import serial.tools.list_ports  
     import time
+    from datetime import datetime
     import kbhit
     import os
     from cloud_config import iot_parameters
@@ -30,6 +31,7 @@ try:
     import re  
     import json
     from time import sleep
+    import atexit
 except ModuleNotFoundError:
     print(f'\n\n----------------------------------------------')
     print(f' Error! Python module not found.')
@@ -58,28 +60,27 @@ LED0_KEY = 76               # 'L'
 HELP_KEY = 72               # 'H'
 
 # Application Configuration File
-APP_CONFIG_FILE = "app.cfg"  # File name for application configuration settings
-iotp = iot_parameters(APP_CONFIG_FILE, True)  # Object read/write configuration json file
+APP_CONFIG_FILE = "app.cfg"         # File name for application configuration settings
+APP_CMD_LOG_PATH = "logs"           # Hardcoded relative log file path
+
+# Object read/write configuration json file
+iotp = iot_parameters(APP_CONFIG_FILE, False)
 
 try:
-    # Assign values from the default configuration file "app.cfg"
-    # COM port setting - Use to manually force com port use
-    COM_PORT = iotp.params["comm_port"]  # Auto detect when set to ""
-
     WIFI_SSID = iotp.params["wifi_ssid"]
     WIFI_PASSPHRASE = iotp.params["wifi_passphrase"]
     WIFI_SECURITY = iotp.params["wifi_security"]
     NTP_SERVER = iotp.params["ntp_server"]
     ID_SCOPE = iotp.params["id_scope"]
+    APP_CMD_LOG_FILE = iotp.params["log"]
 
-    # List of supported RN part numbers
-    # ---------------------------------
-    # Model is read from the 'app.cfg'
-    # and is added to the list first!
-    # Then we add the backup part number.
-    MODEL = iotp.params["model"]
-    SUPPORTED_RNS = [MODEL, 'PIC32MZW2']
-
+    # Supported part numbers are in a dictionary of tuples.
+    # The device is the key and the tuple contains all the possible
+    # device names returned by the AT+GMM command. The identified
+    # device determines how the script will run.
+    SUPPORTED_RNS_DICT = {"RNWF02": ("PIC32MZW2", "RNWF02"),
+                          "RNWF11": ("PIC32MZW1", "RNWF11")
+                          }
     MQTT_BROKER_URL = iotp.params["mqtt_broker_url"]
     MQTT_BROKER_PORT = iotp.params["mqtt_broker_port"]
     MQTT_CLIENT_ID = iotp.params["mqtt_client_id"]
@@ -91,9 +92,9 @@ try:
     ASSIGNED_HUB = iotp.params["assigned_hub"]
 
     FORCE_DPS_REG = int(iotp.params["force_dps_reg"])
-    if FORCE_DPS_REG > 1 or OPERATION_ID == "" or ASSIGNED_HUB =="":
-        OPERATION_ID = ""
-        ASSIGNED_HUB = ""
+    if FORCE_DPS_REG >= 1 or OPERATION_ID == "" or ASSIGNED_HUB == "":
+        OPERATION_ID = iotp.params["operation_id"] = ""
+        ASSIGNED_HUB = iotp.params["assigned_hub"] = ""
 
     DEVICE_CERT_FILENAME = iotp.params["device_cert_filename"]
     DEVICE_KEY_FILENAME = iotp.params["device_key_filename"]
@@ -107,14 +108,18 @@ except KeyError as e:
     banner(f' Error: Configuration parameter {e} missing \n\n'
             f'Verify the parameter {e} in "{APP_CONFIG_FILE}"\n'
             f'  Manually add/edit the parameter OR\n'
+           
             f'  Delete "{APP_CONFIG_FILE}" to recreate it on the next run', BANNER_BORDER_LEV_3)
     exit(1)
 
-
-TLS_CFG_INDEX = 1   # Use 1 or 2, not 0
+TLS_CFG_INDEX = 1   # All AT+TLSC commands can be programmed into 1 of 2 banks, 1 or 2.
+                    # Then AT+MQTT=7,x will set which bank is used for the TLSC commands.
+                    # Use 1 or 2, not 0(AT Spec RNWF11 doc is incorrect)
 
 TLS_CERT_DPS = "DigiCertGlobalRootG2"
 TLS_CERT_IOTC = "DigiCertGlobalRootG2"
+
+TLS_CERT_BUILDS = "./Tools/CertificateTool/CertBuilds"
 
 APP_DISPLAY_OFF = 0         # Extra displays off...cleanest output
 APP_DISPLAY_STATES = 1      # Display State Banners & lower
@@ -129,14 +134,18 @@ API_VERSION_DEV_TWIN = "2021-04-12"     # API version for Device Twin call
 
 # -----------------------------------------------------------------------------
 # Application States
-APP_STATE_CLI = 0                           # CLI state occurs on fatal error OR after the DEMO
+APP_STATE_CLI = 0                       # CLI state occurs on fatal error OR after the DEMO
 
 APP_STATE_WIFI_CONNECT = 1
-APP_STATE_DPS_REGISTER = 2
-APP_STATE_IOTC_CONNECT = 3
-APP_STATE_IOTC_GET_DEV_TWIN = 4
-APP_STATE_SET_PROPERTIES = 5
+APP_STATE_MQTT_SETTINGS = 2
+APP_STATE_DPS_REGISTER = 3
+APP_STATE_IOTC_CONNECT = 4
+APP_STATE_IOTC_GET_SET_DEV_TWIN = 5
 APP_STATE_IOTC_DEMO = 6
+
+APP_SUB_STATE_DEMO_LOOP = 2
+APP_SUB_STATE_DEMO_SUCCESS_RSP = 4
+APP_SUB_STATE_DEMO_FAILURE_RSP = 5
 
 APP_STATE_INIT = APP_STATE_WIFI_CONNECT     # Sets the beginning STATE
 
@@ -145,7 +154,7 @@ APP_STATE_UNKNOWN = 255
 
 help_str_0 = f' {APP_STATE_CLI} - APP_STATE_CLI Help\n' \
 '  H    - This help screen\n' \
-'  AT+  - AT command with or w/o the \'AT\' eg: \'+GMM\'\n' \
+'  AT+  - AT command with or w/o the \'AT\' eg: \'AT+GMM\' or \'+GMM\'\n' \
 '  DIR  - List certs & keys. eg: dir [c | k] \n' \
 '  DEL  - Delete certs & keys. eg: del [c | k] <FILENAME>\n' \
 '  SCAN - Scan & displays Wi-Fi information\n' \
@@ -179,8 +188,10 @@ TOPIC_DPS_POLL_REG_COMPLETE2 = "&operationId="
 # DPS result topic (for subscription)
 TOPIC_DPS_RESULT = "$dps/registrations/res/#"
 
-# Azure IoT Central Topics
+# RNFW11 only value.
+MQTT_SUBSCRIPTION_READ_THRESHOLD = 700
 
+# Azure IoT Central Topics
 # telemetry topic (for publish)
 # write property to cloud topic (for publish)
 TOPIC_IOTC_WRITE_PROPERTY = "$iothub/twin/PATCH/properties/reported/?rid="
@@ -203,32 +214,45 @@ APP_RET_COM_NOT_FOUND = 1
 APP_RET_COM_BUSY = 2
 
 
-def detect_port(com_ports: list, supported_pn: list) -> str:
-    for port in com_ports:
-        rx_data = []
-        try:
-            s = serial.Serial(port=port, baudrate=230400, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, timeout=4.0, write_timeout=4.0, inter_byte_timeout=0.5)
-            sleep(0.1)
-            s.write(f'AT+GMM\r\n'.encode('UTF-8'))
-            sleep(0.1)
-            try:
-                while s.in_waiting:
-                    if s.in_waiting == 1:
-                        break
-                    c = s.readline()
-                    c = c.decode('UTF-8').strip('\r\n').replace('"', '').replace('+GMM:', '')
-                    rx_data.append(c)
-            except UnicodeDecodeError:
-                pass
-            if len(rx_data) != 0:
-                if rx_data[1] in supported_pn and rx_data[2] == 'OK':
+def detect_port(com_ports: list, supported_pn: dict) -> str:
+    """
+    Detect the connected COM port by sending +GMM command to each
+    USB UART port and testing against the supported dict devices.
+    """
+    # Loop through supported part numbers to find the connected device
+    # supported_pn: type 'SUPPORTED_RNS_DICT' = {"RNWF02": ("PIC32MZW2", "RNWF02"), next device...
+    for device, val in supported_pn.items():
+        for signature in val:
+            #print(f'Signature:{sig} is a {device} device')
+            for port in com_ports:
+                rx_data = []
+                try:
+                    s = serial.Serial(port=port, baudrate=230400, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, timeout=4.0, write_timeout=4.0, inter_byte_timeout=0.5)
+                    try:
+                        sleep(0.2)
+                        s.write(f'AT+GMM\r\n'.encode('UTF-8'))
+                        sleep(0.2)
+                        while s.in_waiting:
+                            if s.in_waiting == 1:
+                                break
+                            c = s.readline()
+                            c = c.decode('UTF-8').strip('\r\n').replace('"', '').replace('+GMM:', '')
+                            rx_data.append(c)
+                    except UnicodeDecodeError:
+                        pass
+                    try:
+                        if len(rx_data) != 0:
+                            if rx_data[1] == signature and rx_data[2] == 'OK':
+                                s.close()
+                                return device, port
+                    except IndexError:
+                        pass
                     s.close()
-                    return port
-            s.close()
 
-        except serial.SerialException:
-            pass
-    return ''
+                except serial.SerialException:
+                    pass
+    return "", ""
+
 
 def find_com_port() -> str:
     """
@@ -249,7 +273,14 @@ def find_com_port() -> str:
             # Save USB ports in a list so we can find
             usb_com_ports.append(port)
 
-    return detect_port(usb_com_ports, SUPPORTED_RNS)
+    for i in range(3):
+        os.system('cls')  # Clear terminal screen
+        print(f'\n\nDetecting COM ports...({i+1} of 3)')
+        port, device = detect_port(usb_com_ports, SUPPORTED_RNS_DICT)
+        if port:
+            os.system('cls')  # Clear terminal screen
+            break
+    return port, device
 
 
 class Polling_KB_CMD_Input:
@@ -349,10 +380,8 @@ class Delay_Non_Blocking:
             return False
 
 
-class AzCloud:
-    # Lambda Functions
+class IotCloud:
     def __init__(self, port: str, baud: int) -> None:
-
         # initialize class variables
         self.ser_buf = ""  # serial buffer for processing messages
 
@@ -363,10 +392,13 @@ class AzCloud:
         self.app_wait = False
         self.next_sub_state_offset = 1
 
-        # firmware Syntax for parse: '+GMR:"1.0.0 0 630f6fcf [13:57:15 Jun 27 2023]"'
-        self.fw_version = "TBD"
-        self.fw_hash = "TBD"
-        self.fw_datestamp = "TBD"
+        # firmware Syntax for parse RNFW02: '+GMR:"1.0.0 0 630f6fcf [13:57:15 Jun 27 2023]"'
+        # firmware Syntax for parse RNFW11: '+GMR:"78de24c4 [09:48:06 Nov  2 2023]"'
+        self.fw_version = "Not Reported"
+        self.fw_hash = "Not Reported"
+        self.fw_datestamp = "Not Reported"
+
+        self.log_file_handle = ""       # Log file handle if created
 
         # MQTT handling variables
         self.rid = 0  # request id field used by some publish commands.
@@ -395,8 +427,8 @@ class AzCloud:
 
         self.telemetry_interval = ''        # Property: Telemetry interval
         self.iotc_led0 = ''                 # Property: "LED0"
-        self.ip_addr = ''                   # Property: IP Address reported to Azure
-        self.ip_addr_wifi = ''              # IP Address returned from router
+        self.ip_addr_ipv4 = 'n/a'           # Property: IP Address reported to Azure
+        self.ip_addr_ipv6 = 'n/a'           # IP Address returned from router
         self.telemetry_ints = [0, 2, 5, 10] # Demo state 6 supported telemetry intervals in seconds
         self.telemetry_index = 0            # Demo state 6 index to current telemetry interval
         self.demo_loops = 0                 # Max number of telemetry updates in State 6 Demo
@@ -405,9 +437,10 @@ class AzCloud:
         self.resp_dict = {}
         self.reboot_timer = Delay_Non_Blocking()
 
-        self.at_command = ""  # The AT command currently being executed
-        self.at_command_prev = ""  # Previously executed AT command
-        self.at_command_resp = ""  # Alt 'response' to use if the command itself isn't the desired response
+        self.at_quiet_command = False       # Disable CLI command output for 1 cmd before reset
+        self.at_command = ""                # The AT command currently being executed
+        self.at_command_prev = ""           # Previously executed AT command
+        self.at_command_resp = ""           # Alt 'response' to use if the command itself isn't the desired response
 
         self.at_command_timer = Delay_Non_Blocking()
         self.at_command_timer.stop()
@@ -426,6 +459,101 @@ class AzCloud:
             exit(APP_RET_COM_BUSY)
         self.delay = Delay_Non_Blocking()
         self.kb = Polling_KB_CMD_Input()
+
+        self.open_log()                             # Start the log file
+
+    def set_log_file_name(self) -> str | datetime:
+        """ Decodes and sets the global APP_CMD_LOG_FILE
+            and returns the constructed log 'filename' and the
+            datetime object for its creation.
+        """
+        file_name = globals()["APP_CMD_LOG_FILE"]
+        now = datetime.now()
+        t = now.strftime("%H-%M-%S")
+        d = now.strftime("%b_%d_%Y")
+        file_name = file_name.replace("%m", "%M", 1).replace("%M", MODEL, 1)
+        file_name = file_name.replace("%d", "%D", 1).replace("%D", d, 1)
+        file_name = file_name.replace("%t", "%T", 1).replace("%T", t, 1)
+        globals()["APP_CMD_LOG_FILE"] = file_name
+        return file_name, now
+
+    def open_log(self) -> None:
+        """ Sets the logfile handle, if applicable and opens the log file for writing """
+        file_name, now = self.set_log_file_name()
+        if file_name:
+            try:  # Create the certificate build folder structure
+                os.makedirs(f'{globals()["APP_CMD_LOG_PATH"]}')
+            except FileExistsError:
+                # directory already exists
+                pass
+            try:
+                logfile = f'{globals()["APP_CMD_LOG_PATH"]}/{file_name}'
+                self.log_file_handle = open(f'{logfile}', "w+")
+            except:
+                banner(f' ERROR: Log file could not be created or written\n'
+                       f' Verify {APP_CONFIG_FILE} \'log\' syntax\n'
+                       f' Is the log file READ ONLY?', BANNER_BORDER_LEV_1)
+                print("\n")
+                self.log_file_handle = None
+                pass
+            else:
+                self.log_file_handle.write(f'IoT Out-Of-Box Azure Demonstration Command Log\n')
+                self.log_file_handle.write(f'{"-" * 46}\n')
+                self.log_file_handle.write(f'Filename:  {file_name}\n')
+                self.log_file_handle.write(f'Created:   {now.strftime("%b %d, %Y")} {now.strftime("%H:%M:%S")}\n')
+                self.log_file_handle.write(f'Device:    {MODEL}\n')
+                self.log_file_handle.write(f'COM Port:  {COM_PORT}\n')
+                self.log_file_handle.write(f'Force DPS: {FORCE_DPS_REG}\n')
+                self.log_file_handle.write(f'{"-" * 46}\n\n')
+
+    def log_state(self, msg: str, border_char: str = '#', single_line: bool = False) -> None:
+        """ Adds a banner in the log if log is used"""
+        if self.log_file_handle:
+            str_caps = f'{border_char * 4}'
+            min_msg_len = 34
+            msg = f' {msg:^{min_msg_len}} '
+            msg = f'{str_caps} {msg} {str_caps}'
+            if single_line is True:
+                self.log_file_handle.write(f'{msg}\n')
+            else:
+                self.log_file_handle.write(f'{border_char * len(msg)}\n{msg}\n{border_char * len(msg)}\n')
+            self.log_file_handle.flush()
+
+    def cmd_log(self, msg: str) -> None:
+        """ Outputs the CMD/RSP strings to the CLI and option log file """
+
+        # Remove any NULL's returned by the device such as during AT+RST
+        msg = ''.join(msg.split('\x00'))
+        msg = msg.strip('\n')
+        if "CMD[" in msg or "CRx[" in msg:
+            if self.at_quiet_command is False:
+                print(f'{msg}\n', flush=True, end='')
+            if self.log_file_handle:  # Print to LOG file if enabled
+                self.log_file_handle.write(f'{msg}\n')
+                self.log_file_handle.flush()
+
+        elif "RSP[" in msg:         # Print to CLI
+            if self.at_quiet_command is False:
+                print(f'{msg}\n', flush=True, end='')
+            if self.log_file_handle:  # Print to LOG file if enabled
+                self.log_file_handle.write(f'{msg}\n\n')
+                self.log_file_handle.flush()
+        else:
+            if self.at_quiet_command is False:
+                print(f'{msg}', flush=True, end='')
+            if self.log_file_handle:                       # Print to LOG file if enabled
+                self.log_file_handle.write(f'{msg}\n')
+                self.log_file_handle.flush()
+
+    def is_model(self, dev: str, val_true: any = True, val_false: any = False) -> any:
+        """ Verifies device MODEL number and returns True, False or the passed in type if true """
+        global MODEL, FORCE_DPS_REG
+        if dev == "RNWF11" and dev == MODEL and bool(FORCE_DPS_REG) is True:
+            return val_false
+        if dev == MODEL:
+            return val_true
+        else:
+            return val_false
 
     def hex_rid(self, rid: int = -1) -> str:
         """ Converts class 'self.rid' into a hex string w/o '0x' prefix for Azure MQTT commands.
@@ -463,7 +591,7 @@ class AzCloud:
 
     def set_state(self, new_state: int, new_sub_state: int = 0) -> None:
         """
-        Sets a new state and optionally a new sub state. If the sub_state
+        Sets a new state and optionally a new sub-state. If the sub_state
         is not passed, the default 0 is used showing the state banner
         """
         if APP_STATE_CLI <= new_state <= APP_STATE_IOTC_DEMO:
@@ -484,7 +612,9 @@ class AzCloud:
         if self.at_command_timer.isStarted and self.at_command:
             run_time = time.time() - self.at_command_timer.time_start
             if run_time > self.at_command_timeout:
-                banner(f' Command "{self.at_command}" timed out after {run_time:.2f}s', "▫")
+                # banner(f' Command "{self.at_command}" timed out after {run_time:.2f}s', "▫")
+                # print(f'\n')
+                self.cmd_log(f'Command "{self.at_command}" timed out after {run_time:.2f}s')
                 print(f'\n')
                 self.at_command_timer.stop()
                 self.at_command_prev = self.at_command
@@ -496,7 +626,7 @@ class AzCloud:
                 err_sig = f'{self.app_state:0>2}:{self.app_sub_state:0>2}'
 
                 # Special handling of time critical command calls
-                if err_sig == '01:12':
+                if err_sig == '01:21':
                     self.err_handler(run_time, f'AT+SNTPC=3,"{NTP_SERVER}" [ER]:NTP server did not respond @ [{err_sig}]', '01:09')
                 # other elif go here
                 else:
@@ -511,7 +641,20 @@ class AzCloud:
                 self.at_command_resp = ""
                 self.at_command_timeout = 0 # AT_COMMAND_TIMEOUT
 
-    # cmd_issue() - Issue serial command to AzCloud
+    def cmd_issue_quiet(self,
+                  command: str,
+                  next_sub_state_offset: int = 0,
+                  alt_resp: str = "",
+                  timeout: int = AT_COMMAND_TIMEOUT) -> None:
+        self.at_quiet_command = True
+        self.cmd_issue(command, next_sub_state_offset, alt_resp, timeout)
+
+    """ This is an alternate function to submit AT+ commands but blocks CLI screen output.
+        If a log file is used the command will appear in the logs.
+        Also the default 'next_sub_state_offset' is set to '0' so that it can be used
+        during startup and not increment the programmed substate.
+    """
+    # cmd_issue() - Issue serial command to AzureCloud
     # Modified to automatically wait until a response string
     # is received in 'rx_data_process() function where the 'next'
     # step will be incremented by 1, unless the 'next_step' value is
@@ -525,6 +668,14 @@ class AzCloud:
                   alt_resp: str = "",
                   timeout: int = AT_COMMAND_TIMEOUT) -> None:
         command = self.substr_swap(command, {'\r': '', '\n': ''})
+
+        # Debug support for NOOP command without any processing
+        if command == "NOOP":
+            self.cmd_log(f'CMD[{self.app_state:0>2}.{self.app_sub_state:0>2}]: NOOP - No operation')
+            self.cmd_log(f'RSP[{self.app_state:0>2}.{self.app_sub_state:0>2}]: NOOP - No operation')
+            print("\r")
+            self.app_sub_state += next_sub_state_offset
+            return
         if self.at_command == "":  # If empty, it means no AT commands are 'pending'
             self.at_command = command
             self.at_command_timeout = timeout
@@ -537,8 +688,7 @@ class AzCloud:
             banner(f' AT Command still processing:\n  Command Pending:  {self.at_command}\n' f'  Command Not Sent: {command}')
             return
 
-        # if self.app_state < APP_STATE_IOTC_DEMO:
-        print(f'CMD[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {command.lstrip().strip()}', flush=True)
+        self.cmd_log(f'CMD[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {command.lstrip().strip()}')
 
         # Send the AT command and add required '\r\n'
         self.at_command_timer.stop()  # Reset the command timer
@@ -594,10 +744,10 @@ class AzCloud:
     # returns JSON from AT+MQTTPUB event notification payload
     def process_topic_notification(self, payload: str) -> tuple[any, int]:
         ''' Process the MQTTSUBRX response into proper JSON for variable extraction
-        DPS_STATE 02:15: +MQTTSUBRX:0,0,0,"$dps/registrations/res/202/?$rid=1&retry-after=3","{\\"operationId\\":\\"5.f459fec3883c3357.2c044a97-aa77-40f1-bf49-add7330b9704\\",\\"status\\":\\"assigning\\"}"
+        DPS_STATE 03:02 +MQTTSUBRX:0,0,0,"$dps/registrations/res/202/?$rid=1&retry-after=3","{\\"operationId\\":\\"5.f459fec3883c3357.2c044a97-aa77-40f1-bf49-add7330b9704\\",\\"status\\":\\"assigning\\"}"
         operationId:   "5.f459fec3883c3357.2c044a97-aa77-40f1-bf49-xxxxxxxxxxxx"
         status:        "assigning"
-        DPS_STATE 02:16: +MQTTSUBRX:0,0,0,"$dps/registrations/res/200/?$rid=2",...
+        DPS_STATE 03:03 +MQTTSUBRX:0,0,0,"$dps/registrations/res/200/?$rid=2",...
         operationId:  "5.f459fec3883c3357.2c044a97-aa77-40f1-bf49-xxxxxxxxxxxx"
         status:       "assigned"
         '''
@@ -624,11 +774,6 @@ class AzCloud:
                    f'  JSON Size       {len(jsn_str)} bytes\n'
                    f'  Payload Size:   {len(payload)} bytes\n')
             exit(10)
-        #banner(f'Payload:\n{payload}\n{json_obj}')
-        # banner(f'Payload:\n{json_obj[0]} Property updated from IoTC\n{jsn_list}')
-        # for key in json_obj:
-        #     # value = json_obj[key]
-        #     print(f'Key:{key} Value:{json_obj[key]}')
         return json_obj, resp_code
 
     def evt_init_error(self) -> None:
@@ -682,7 +827,8 @@ class AzCloud:
                 rx = self.substr_swap(rx, {">": "", "OK": "", "\r": "", "\n": ""})
                 fs_status_list = rx.split(',', 3)
                 banner(f' Network Info (AT+WSTA=1)\n'
-                       f'  IP Address:        {self.ip_addr}\n'
+                       f'  IP Address IPv4:   {self.ip_addr_ipv4}\n'
+                       f'  IP Address IPv6:   {self.ip_addr_ipv6}\n'
                        f'  Wi-Fi Connected:   {self.wifi_connected}\n'
                        f'  Broker Connected:  {self.broker_connected}\n\n'
                        f'Firmware Info (AT+GMR)\n'
@@ -698,7 +844,7 @@ class AzCloud:
                     cert_type = f' Dir Certificates ({len(file_list)}) '
                 else:
                     cert_type = f' Dir Keys ({len(file_list)}) '
-                print(f'RSP[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {resp_list[1]}', flush=True)
+                #self.cmd_log(f'RSP[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {resp_list[1]}') #, flush=True)
                 banner(cert_type)
                 cnt = 1
                 for files in file_list:
@@ -716,26 +862,41 @@ class AzCloud:
 
     def evt_gmr_data_result(self, rx: str) -> None:
         """ Stores AT+GMR command results """
+
         if (len(rx)):
+            rep_str = 'Not Reported'
+            self.fw_version = self.fw_hash = self.fw_datestamp = rep_str
             try:
-                # +GMR:"1.0.0 0 630f6fcf [13:57:15 Jun 27 2023]"
-                to_remove = {'"': '', '[': '', ']': '', '>': '', '\r\n': '', 'AT+GMR': '', '+GMR:': '', 'OK': ''}
+                # +GMR:"1.0.0 0 630f6fcf [13:57:15 Jun 27 2023]" OK <- RNWF02 format
+                # +GMR:"78de24c4 [09:48:06 Nov  2 2023]" OK         <- RNWF11 format
+                # +GMR:"78de24c4 [16:59:49 Nov 22 2023]" OK         <- RNWF11 Beta format
+                to_remove = {'"': '', '[': '', ']': '', '>': '',
+                             '\r\n': '', 'AT+GMR': '', '+GMR:': '', 'OK': ''}
                 parsed = self.substr_swap(rx, to_remove)
+                parsed = ' '.join(parsed.split())
                 parsed = parsed.split(' ')
-                self.fw_version = parsed[0]
-                self.fw_hash = parsed[2]
-                self.fw_datestamp = parsed[3] + ' ' + parsed[4] + ' ' + parsed[5] + ' ' + parsed[6]
-                # self.fw_datestamp
+
+                for item in parsed:
+                    if item.__contains__('.') and self.fw_version == rep_str:
+                        self.fw_version = item
+                    elif len(item) == 8 and self.fw_hash == rep_str:
+                        self.fw_hash = item
+                    elif item.__contains__(':') and self.fw_datestamp == rep_str:
+                        self.fw_datestamp = f'{item} '
+                    elif len(item) < 1 or item == '0':
+                        continue
+                    else:
+                        self.fw_datestamp += f'{item} '
             except:
                 self.fw_version = "???"
                 self.fw_hash = "???"
                 self.fw_datestamp = "???"
 
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
-                banner(f' Info: Firmware:\n'
-                       f'  Version:    {self.fw_version}\n'
-                       f'  Date:       {self.fw_datestamp}\n'
-                       f'  Signature:  {self.fw_hash}')
+                banner_str = (f' Firmware Info:\n  Version:    {self.fw_version}\n'
+                              f'  Date:       {self.fw_datestamp}\n  Signature:  {self.fw_hash}')
+                banner(banner_str)
+
     def evt_wifi_connected(self) -> None:
         """ Outputs Wi-Fi status on change """
         if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
@@ -750,9 +911,20 @@ class AzCloud:
         jsn, resp_code = self.process_topic_notification(self.sub_payload)
 
         if OPERATION_ID == "":
-            OPERATION_ID = jsn["operationId"]  # DPS state 12 complete...got operationalId
-            OPERATION_ID = iotp.params["operation_id"] = jsn["operationId"]
-            iotp.write()
+            try:
+                OPERATION_ID = jsn["operationId"]  # DPS state 12 complete...got operationalId
+                OPERATION_ID = iotp.params["operation_id"] = jsn["operationId"]
+                if self.sub_payload.__contains__('errorCode'):
+                    raise Exception("DPS Negotiation error")
+            except:
+                banner(f' Error: Failed to initiate Azure\'s DPS negotiation. \n'
+                        f'Possible local/remote certificate or \'ID Scope\' issue. \n\n'
+                        f'  * Reload device certificate and key to device if applicable.\n'
+                        f'  * Upload the appropriate subordinate certificate to Azure.\n'
+                        f'  * Verify \'id_scope\' string in the config \'{APP_CONFIG_FILE}\'file.\n'
+                        f'\nCMD[{self.app_state}.{self.app_sub_state}]: {self.at_command_prev}\n'
+                        f'JSON: "{jsn}"', BANNER_BORDER_LEV_1)
+                exit(1)
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
                 banner(
                     f' Event: DPS Subscription Notification \n'
@@ -762,7 +934,7 @@ class AzCloud:
                     f' Response Code:    {resp_code}')
                 if APP_DISPLAY_LEVEL >= APP_DISPLAY_DECODES:
                     json_pretty = json.dumps(jsn, indent=4)
-                    banner(f' JSON Decode of \'+MQTTSUBRX\' RSP[{self.app_state}:{self.app_sub_state - 1}]\n'
+                    banner(f' JSON Decode of \'+MQTTSUBRX\' RSP[{self.app_state}:{self.app_sub_state - 1}]'
                             f'{json_pretty}')
             self.app_sub_state += 1
         elif jsn["status"] == "assigning":  # DPS state running...wait for "assigned"
@@ -806,20 +978,13 @@ class AzCloud:
         rsp = self.sub_payload
         rsp = self.substr_swap(rsp, {">": "", "OK": "[OK]", "ERROR": "[ER]", "\r": "", "\n": " "})
         rsp = rsp.rstrip()
-        print(f'CRx[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {rsp} \n', flush=True, end='')
+        self.cmd_log(f'CRx[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {rsp} \n')
         # 'rid' value is hex not decimal and the response value MUST be the same hex value as the
         # original Azure command "CRx:" received. Azure will increment the 'rid' value on each
         # command, so we receive it here, then set the class 'rid' value to the one received.
         self.set_rid_from_string(rsp)
         azure_cmd_dict: dict = {"echoString": "", "delay": ""}
         (payload, resp_code) = self.process_topic_notification(self.sub_payload)
-        # payload Dict{'delay': 'PT15S'} or {'echoString': 'text message'}
-
-        # Error check. Verify commands from IOTC are not empty. If so fail.
-
-        self.iotc_echo = azure_cmd_dict["echoString"]
-        self.demo_display('echoString', CLOUD_2_DEVICE)
-        self.set_state(APP_STATE_IOTC_DEMO, 3)  # Send "AT+MQTTPUB ... status=Success" to Azure
 
         self.set_rid_from_string(self.sub_payload)
         azure_cmd_dict.update(payload)
@@ -828,23 +993,21 @@ class AzCloud:
         # on the cloud side. State 3 in the Demo handles sending out the command success acknowledgement.
         if azure_cmd_dict['echoString'] != "":
             if payload['echoString'] is None:
-                # self.iotc_echo = "INVALID COMMAND"
-                # self.demo_display('echoString', CLOUD_2_DEVICE)
-                self.set_state(APP_STATE_IOTC_DEMO, 4)  # Send "AT+MQTTPUB ... status=Failure" to Azure
+                # self.iotc_echo = ""
+                self.demo_display('echoString', CLOUD_2_DEVICE)
+                self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_FAILURE_RSP)  # Send "AT+MQTTPUB ... status=Failure" to Azure
                 self.sub_payload = ""
                 return
             else:
                 self.iotc_echo = azure_cmd_dict["echoString"]
                 self.demo_display('echoString', CLOUD_2_DEVICE)
-                self.set_state(APP_STATE_IOTC_DEMO, 3)  # Send "AT+MQTTPUB ... status=Success" to Azure
+                self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_SUCCESS_RSP)  # Send "AT+MQTTPUB ... status=Success" to Azure
         elif azure_cmd_dict['delay'] != "":
-            # If delay is an empty string, turn off interval timer to prevent a crashs
+            # If delay is an empty string, turn off interval timer to prevent a crash
             if payload['delay'] is None:
-                # self.iotc_echo = "INVALID COMMAND"
-                # # re_list = [('PT', '0', 'S')]
-                # self.demo_display('reboot', CLOUD_2_DEVICE)
+                self.demo_display('reboot', CLOUD_2_DEVICE)
                 self.sub_payload = ""
-                self.set_state(APP_STATE_IOTC_DEMO, 4)
+                self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_FAILURE_RSP)
                 return
             else:
                 re_list = re.findall(r'^(PT)(\d*[.]?\d*)([S,M,H])', azure_cmd_dict['delay'])
@@ -868,13 +1031,13 @@ class AzCloud:
 
                 if delay > 0:   # Send "AT+MQTTPUB ... status=Success" to Azure
                                 # AND start the reboot timer
-                    self.set_state(APP_STATE_IOTC_DEMO, 3)
+                    self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_SUCCESS_RSP)
                     self.iotc_reboot_delay = delay
                     self.reboot_timer.start()
                     status = 'Success'
-                else:           # Send "AT+MQTTPUB ... status=Failure" to Azure
+                else:           # Send "AT+MQTTPUB ... status=Success" to Azure
                                 # AND cancel the reboot
-                    self.set_state(APP_STATE_IOTC_DEMO, 4)
+                    self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_SUCCESS_RSP)
                     self.iotc_reboot_delay = 0
                     self.reboot_timer.stop()
                     status = 'Failure'
@@ -944,7 +1107,7 @@ class AzCloud:
 
                 self.demo_display('reportRate', CLOUD_2_DEVICE)
             elif key == "ipAddress":
-                # msg += f'  \'{key_str}\' cannot be updated from the cloud! \'{self.ip_addr}\''
+                # msg += f'  \'{key_str}\' cannot be updated from the cloud! \'{self.ip_addr_ipv4}\''
                 self.telemetry_interval = json_obj[key]
                 self.demo_display('ipAddress', CLOUD_2_DEVICE)
             elif key == "$version":
@@ -965,21 +1128,82 @@ class AzCloud:
         self.sub_payload = ""
 
     def evt_iotc_property_download(self) -> None:
-        (payload, resp_code) = self.process_topic_notification(self.sub_payload)
-        if "reportRate" in payload["desired"]:
-            self.telemetry_interval = payload["desired"]["reportRate"]
-            self.demo_display("reportRate", CLOUD_2_DEVICE)
-            # print(f'Telemetry Interval set to {self.telemetry_interval}s based on Device Twin State')
-        if "LED0" in payload["desired"]:
-            self.iotc_led0 = int(payload["desired"]["LED0"])
-            # print(f'LED0 desired as "{str(self.iotc_led0)}" based on Device Twin State')
-        if "ipAddress" in payload["reported"]:
-            self.ip_addr = payload["reported"]["ipAddress"]
-            self.demo_display("ipAddress", CLOUD_2_DEVICE)
-            # print(f'IP Address reported as "{str(self.ip_addr)}" based on Device Twin State')
-        if len(self.resp_dict):
-            self.demo_display()
+        """ Handles Azure JSON payload return strings """
+        try:
+            (payload, resp_code) = self.process_topic_notification(self.sub_payload)
+            if "reportRate" in payload["desired"]:
+                self.telemetry_interval = payload["reported"]["reportRate"]
+                self.demo_display("reportRate", CLOUD_2_DEVICE)
+                # print(f'Telemetry Interval set to {self.telemetry_interval}s based on Device Twin State')
+            if "LED0" in payload["desired"]:
+                self.iotc_led0 = int(payload["reported"]["LED0"])
+                # print(f'LED0 desired as "{str(self.iotc_led0)}" based on Device Twin State')
+            if "ipAddress" in payload["reported"]:
+                self.ip_addr_ipv4 = payload["reported"]["ipAddress"]
+                self.demo_display("ipAddress", CLOUD_2_DEVICE)
+                # print(f'IP Address reported as "{str(self.ip_addr_ipv4)}" based on Device Twin State')
+        except:
+            banner(f' Error: Failed to read Azure\'s \'Device Twin\' setting(s)\'s \n'
+                   f'Possible issue with the Azure service or the \'Device Template\' for the {MODEL}.\n\n'
+                   f'  * Payload must contain \'reported\' values for \'ipAddress\', \'LED0\', & \'reportRate\'\n'
+                   f'  * Issue may clear itself after a period of time of 24h or more.\n'
+                   f'\nCMD[{self.app_state}.{self.app_sub_state}]: {self.at_command_prev}\n'
+                   f'JSON: "{payload}"', BANNER_BORDER_LEV_1)
+            exit(1)
         self.sub_payload = ""
+
+    def evt_cert_received(self, rsp) -> None:
+        """
+        RNWF11 specific function. Handles the Certificate response from the device
+        by formatting the data and saving it to a proper certificate file for later
+        upload to the cloud.
+        """
+        fmt: int = 0
+        cert_start = cert_end = ""
+        result_list: list = []
+        file_name_list: list = ["na", "device.crt", "signer.crt", "root.der"]
+        # Get certificate type from rsp "AT+ECCRDCERT=1,1500, AT+ECCRDCERT=2,1500, or AT+ECCRDCERT=2,1500
+        try:
+            if "AT+ECCRDCERT=" in rsp and "OK" in rsp:
+                fmt = int((rsp.split("=", 1)[1]).split(",", 1)[0])
+                # 3082 07fd 3082 05e5 a003 0201 0202 1068
+                # 1604 dff3 34f1 71d8 0a73 5599 c141 7230
+                if fmt == 3:
+                    cert_start = rsp.find("[") + 1
+                    cert_end = rsp.find("]")
+                    cert = rsp[cert_start:cert_end]
+
+                    # Split the input_digits into sets of 4 with line break every 8 sets
+                    result_list = [cert[i:i + 4] for i in range(0, len(cert), 4)]
+                    cert = '\n'.join([' '.join(result_list[i:i + 8]) for i in range(0, len(result_list), 8)])
+                else:
+                    cert_start = rsp.find("-----BEGIN CERTIFICATE-----")
+                    cert_end = rsp.find("-----END CERTIFICATE-----") + len("-----END CERTIFICATE-----")
+                    cert = rsp[cert_start:cert_end]
+                    result_list = cert.rsplit("\\n")
+                    cert = ""
+                    for i in result_list:
+                        cert = cert + i + '\n'
+
+                try:    # Create the certificate build folder structure
+                    os.makedirs(f'{globals()["TLS_CERT_BUILDS"]}/{globals()["MQTT_CLIENT_ID"]}')
+                except FileExistsError:
+                    # directory already exists
+                    pass
+                if fmt > 0 and fmt < 4:
+                    f = open(f'{globals()["TLS_CERT_BUILDS"]}/{globals()["MQTT_CLIENT_ID"]}/{file_name_list[fmt]}', "w")
+                    f.write(cert)
+                    f.close()
+            if APP_DISPLAY_LEVEL >= globals()["APP_DISPLAY_INFO"]:
+
+                banner(f' Certificate Written:\n  File Name:  "{file_name_list[fmt]}"\n'
+                       f'  Path:       "{globals()["TLS_CERT_BUILDS"]}/{globals()["MQTT_CLIENT_ID"]}/\"')
+            if APP_DISPLAY_LEVEL >= globals()["APP_DISPLAY_DECODES"]:
+                print(cert)
+        except Exception as e:
+            banner(f' Certificate Write FAILED:\n  File Name:  "{file_name_list[fmt]}"\n'
+                   f'  Path:       "{globals()["TLS_CERT_BUILDS"]}/{globals()["MQTT_CLIENT_ID"]}/\"', "■")
+        return
 
     ##################################
     ### 0 - APP_STATE_CLI
@@ -1016,7 +1240,6 @@ class AzCloud:
                 return self.app_state
             
             elif self.app_sub_state == APP_STATE_COMPLETE:  # Exit app from CLI
-                # This the app's exit path...should happen runApp()
                 self.set_state(APP_STATE_CLI, APP_STATE_COMPLETE)
                 return self.app_state
             
@@ -1025,17 +1248,19 @@ class AzCloud:
                 self.app_state = APP_STATE_COMPLETE
         return self.app_state
 
-    ####################################
+    ##########################################
     ### 1 - APP_STATE_WIFI_CONNECT
-    ####################################
+    ##########################################
     def sm_wifi_init(self) -> int:
         """Start Wi-Fi initialization with an AT-RST (reset) """
         if self.app_sub_state == 0:
+            banner_txt = f' {APP_STATE_WIFI_CONNECT} - APP_STATE_WIFI_CONNECT'
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
-                banner(f' {APP_STATE_WIFI_CONNECT} - APP_STATE_WIFI_CONNECT\n '
+                banner(f'{banner_txt}\n'
                        f'     SSID:     \'{WIFI_SSID}\'\n'
-                       f'      SECURITY: \'{WIFI_SECURITY}\'\n'
+                       f'     SECURITY: \'{WIFI_SECURITY}\'\n'
                        , BANNER_BORDER_LEV_1)
+                self.log_state(banner_txt)
             self.set_state(APP_STATE_WIFI_CONNECT, 1)
         else:
             if self.app_wait:  # Wait here until last command completes
@@ -1044,83 +1269,168 @@ class AzCloud:
             elif self.app_sub_state == 1:
                 if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
                     banner(' Event: Device Reset ')  # Reset chip parameters
-                self.cmd_issue('AT+RST', 1, "RNWF - AT Command Interface")
+                self.cmd_issue('AT+RST', 1, "RNWF - AT Command Interface", 60)
             elif self.app_sub_state == 2:  # Set local echo
                 self.cmd_issue('ATE1')
             elif self.app_sub_state == 3:  # Get chip revision
-                self.cmd_issue('AT+GMR')
-            elif self.app_sub_state == 4:  # Get connection status
-                self.cmd_issue('AT+WSTA')
-            elif self.app_sub_state == 5:  # Set SSID string
+                self.cmd_issue('AT+GMR',
+                               self.is_model("RNWF11", 1, 6))
+            # Internal Certificate commands only supported by RNFW11
+            elif self.app_sub_state == 4:       # Get RNWF11's serial number name for the certs
+                self.cmd_issue(f'AT+ECCRDSER')  # RNWF11 requires this command to make the certs
+            elif self.app_sub_state == 5:           # Get DEVICE(1) certificate
+                self.cmd_issue('AT+ECCRDCERT=1,1500', 1)
+            elif self.app_sub_state == 6:           # Get SIGNER(2) certificate status
+                self.cmd_issue('AT+ECCRDCERT=2,1500', 2)        # Skip the root cert
+            elif self.app_sub_state == 7:           # Get ROOT(3) certificate
+                self.cmd_issue('AT+ECCRDCERT=3,1500', 1)        # Skipped
+
+            elif self.app_sub_state == 8:       # RNWF11 set ECC device type to 'TrustNGo' connection status
+                self.cmd_issue('AT+ECCWRDEVTYPE=1')
+
+            elif self.app_sub_state == 9:  # Set SSID string
                 self.cmd_issue(f'AT+WSTAC=1,"{WIFI_SSID}"')
-            elif self.app_sub_state == 6:  # Set WPA(2=Security Type),(Passed in)
+            elif self.app_sub_state == 10:  # Set WPA(2=Security Type),(Passed in)
                 self.cmd_issue(f'AT+WSTAC=2,{WIFI_SECURITY}')
-            elif self.app_sub_state == 7:  # Set Wi-Fi passphrase
+            elif self.app_sub_state == 11:  # Set Wi-Fi passphrase
                 self.cmd_issue(f'AT+WSTAC=3,"{WIFI_PASSPHRASE}"')
-            elif self.app_sub_state == 8:  # Set Wi-Fi channel to "any"
+            elif self.app_sub_state == 12:  # Set Wi-Fi channel to "any"
                 self.cmd_issue(f'AT+WSTAC=4,0')
-            elif self.app_sub_state == 9:  # Set NTP server URL
-                self.cmd_issue(f'AT+SNTPC=3,"{NTP_SERVER}"')
-            elif self.app_sub_state == 10:  # Set NTP Client function: Disable(0), Enable(1)
+            elif self.app_sub_state == 13:  # Set NTP Client function: Disable(0), Enable(1)
                 self.cmd_issue(f'AT+SNTPC=1,1')
-            elif self.app_sub_state == 11:  # Set NTP Config Mode: DHCP can set(0), STATIC cannot be set by DHCP(1)
+            elif self.app_sub_state == 14:  # Set NTP Config Mode: DHCP can set(0), STATIC cannot be set by DHCP(1)
                 self.cmd_issue(f'AT+SNTPC=2,1')
-            elif self.app_sub_state == 12:  # Connect to AP  & Wait for NTP server UTC time
+            elif self.app_sub_state == 15:  # Set NTP server URL
+                self.cmd_issue(f'AT+SNTPC=3,"{NTP_SERVER}"')
+            elif self.app_sub_state == 16:  # Set internal TLS handshake certificate
+                self.cmd_issue(f'AT+TLSC={TLS_CFG_INDEX},1,"{TLS_CERT_DPS}"',
+                               self.is_model("RNWF11", 3, 1))
+            elif self.app_sub_state == 17:  # Set Device CERTIFICATE filename
+                self.cmd_issue(f'AT+TLSC={TLS_CFG_INDEX},2,"{DEVICE_CERT_FILENAME}"')
+            elif self.app_sub_state == 18:  # Set Device KEY filename
+                self.cmd_issue(f'AT+TLSC={TLS_CFG_INDEX},3,"{DEVICE_KEY_FILENAME}"', 1)  # Skip next state
+            elif self.app_sub_state == 19:  # Set TLS device server
+                self.cmd_issue(f'AT+TLSC={TLS_CFG_INDEX},5,"{TLS_DEVICE_SERVER}"',
+                               self.is_model("RNWF11", 1, 2))
+            elif self.app_sub_state == 20:  # Use RNWF11's ECC Device. RNWF02 skips this command
+                self.cmd_issue(f'AT+TLSC={TLS_CFG_INDEX},8,1')
+            elif self.app_sub_state == 21:  # Connect to AP  & Wait for NTP server UTC time
                 self.cmd_issue(f'AT+WSTA=1', 1, "+TIME:", 60)
-            elif self.app_sub_state == 13:
+            elif self.app_sub_state == 22:
                 self.app_sub_state = APP_STATE_COMPLETE
             else:
                 dbg_banner(f' Warning: Unhandled "sm_wifi_init()" state ({self.app_sub_state})!')
                 self.app_sub_state = APP_STATE_COMPLETE
         return self.app_sub_state
+    ##########################################
+    ### 2 - APP_STATE_MQTT_SETTINGS
+    ##########################################
+    def sm_mqtt_settings(self) -> int:
+        """Start Azure Device Provisioning Service(DPS """
+        if self.app_sub_state == 0:
+            banner_txt = f' {APP_STATE_MQTT_SETTINGS} - APP_STATE_MQTT_SETTINGS '
+            if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
+                banner(f'{banner_txt}', BANNER_BORDER_LEV_1)
+                self.log_state(banner_txt)
+            self.set_state(APP_STATE_MQTT_SETTINGS, 1)
+        else:
+            if self.app_wait:  # Wait here until last command completes
+                pass
+            elif self.app_sub_state == 1:  # Broker URL Azure
+                self.cmd_issue(f'AT+MQTTC=1,"{MQTT_BROKER_URL}"')
+            elif self.app_sub_state == 2:  # DPS broker port (TLS)
+                self.cmd_issue(f'AT+MQTTC=2,{MQTT_BROKER_PORT}')
+            elif self.app_sub_state == 3:  # MQTT Client ID
+                 self.cmd_issue(f'AT+MQTTC=3,"{MQTT_CLIENT_ID}"')
+            elif self.app_sub_state == 4:  # MQTT Username
+                self.cmd_issue(f'AT+MQTTC=4,"{ID_SCOPE}/registrations/{MQTT_CLIENT_ID}/api-version={API_VERSION_DPS}"',
+                               2)   # Skip the next command 'MQTT Password...not required
+            elif self.app_sub_state == 5:  # Set MQTT Password
+                self.cmd_issue(f'AT+MQTTC=5, ""')
+            elif self.app_sub_state == 6:  # Set MQTT Keep Alive
+                self.cmd_issue(f'AT+MQTTC=6, {MQTT_KEEP_ALIVE}')
+            elif self.app_sub_state == 7:  # Set TLS configuration index see "AT+TLSC"
+                self.cmd_issue(f'AT+MQTTC=7, {TLS_CFG_INDEX}')
+            elif self.app_sub_state == 8:  # Set MQTT version 3 or 5
+                self.cmd_issue(f'AT+MQTTC=8, {MQTT_VERSION}', 1)
+                               #self.is_model("RNWF11", 1, 8)) # RNWF02 skips next 6 commands
+            elif self.app_sub_state == 9:
+                # This check is for a physical RNWF11 device, even if FORCE_DPS is enabled
+                if MODEL == "RNWF11":       # RNWF11 Only! Set the 'Subscription read threshold' to prevent JSON failure.
+                    self.cmd_issue(f'AT+MQTTC=9, {MQTT_SUBSCRIPTION_READ_THRESHOLD}',
+                                   self.is_model("RNWF11", 1, 7))
+                    #self.cmd_issue(f'NOOP', 7)
+                else:
+                    self.set_state(self.app_state, self.is_model("RNWF11", 1, self.app_sub_state + 7))
+                # Sets state based on device and its mode. 'is_model(), will return:
+                #   True if device = RNWF11 AND Force_DPS is DISABLED
+                #   False if device = RNWF02 or RNWF11 And Force DPS is ENABLED
+            #
+            # START: RNWF11 Specific commands used to perform Azure DPS internal to the device
+            #
+            elif self.app_sub_state == 10:  # RNWF11 select Azure Server(1), Other(0)
+                self.cmd_issue(f'AT+MQTTC=10, 1', 1)
+            elif self.app_sub_state == 11:  # RNWF11 select device template
+                self.cmd_issue(f'AT+AZUREC=1, "{DEVICE_TEMPLATE}"', 1)
+            elif self.app_sub_state == 12:
+                self.cmd_issue('AT+MQTTCONN=1', 1, "+MQTTCONNACK", 60)
+            elif self.app_sub_state == 13:
+                # RNWF11 ONLY: Send MQTTC=4 to retrieve the internally negotiated Assigned Hub string
+                self.cmd_issue(f'AT+MQTTC=4')
+            elif self.app_sub_state == 14:
+                # FW Bug Fix: Initial fw release doesn't send the 'api-version' with this cmd.
+                #
+                # The Assigned Hub is retrieved by "rx_data_process()" under "elif "+MQTTC=4 +MQTTC:4""
+                # Reconstruct the string with the 'api-version' on the end and resubmit.
 
-    ####################################
-    ### 2 - APP_STATE_DPS_REGISTER
-    ####################################
+                # If the previous 'MQTT=4' command set the 'ASSIGNED_HUB' string, this firmware has the bug
+                # and will resubmit the MQTTC=4 command. If the 'ASSIGNED_HUB' is empty, the firmware has the
+                # fix and the command is not needed and skipped. See rx_data_process() @ elif "+MQTTC=4 +MQTTC:4"
+                if ASSIGNED_HUB:
+                    self.cmd_issue(f'AT+MQTTC=4,"{ASSIGNED_HUB}/{MQTT_CLIENT_ID}/?api-version={API_VERSION_DEV_TWIN}"')
+                else:
+                    self.set_state(self.app_state, self.app_sub_state + 1)
+            #
+            # END: RNWF11 specific commands
+            #
+            elif self.app_sub_state == 15:          # Disconnect from MQTT server
+                self.cmd_issue('AT+MQTTDISCONN=0', 1, "+MQTTCONN:0")
+            elif self.app_sub_state == 16:          # Report MQTT settings
+                self.cmd_issue(f'AT+MQTTC')
+            elif self.app_sub_state == 17:          # MQTT make the connection
+                self.cmd_issue(f'AT+MQTTCONN=1', 1, "+MQTTCONNACK", 60)  # CRITICAL Wait for this response
+            elif self.app_sub_state == 18:
+                if self.is_model("RNWF11"):          # RNFW11 skips DPS completely
+                    self.set_state(APP_STATE_IOTC_CONNECT, 0)
+                else:                               # RNFW02 does DPS now
+                    self.app_sub_state = APP_STATE_COMPLETE
+            else:
+                dbg_banner(f' Warning: Unhandled "sm_mqtt_settings()" state ({self.app_sub_state})!')
+                self.app_sub_state = APP_STATE_COMPLETE
+        return self.app_sub_state
+
+    ##########################################
+    ### 3 - APP_STATE_DPS_REGISTER
+    ##########################################
     def sm_dps_register(self) -> int:
         """Start Azure Device Provisioning Service(DPS """
         global OPERATION_ID, ASSIGNED_HUB
 
         if self.app_sub_state == 0:
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
-                banner(f' {APP_STATE_DPS_REGISTER} - APP_STATE_DPS_REGISTER', BANNER_BORDER_LEV_1)
+                banner_txt = f' {APP_STATE_DPS_REGISTER} - APP_STATE_DPS_REGISTER '
+                banner(f'{banner_txt}', BANNER_BORDER_LEV_1)
+                self.log_state(banner_txt)
             self.set_state(APP_STATE_DPS_REGISTER, 1)
         else:
             if self.app_wait:  # Wait here until last command completes
                 pass
-            elif self.app_sub_state == 1:  # Set MQTT version 3 or 5
-                self.cmd_issue(f'AT+MQTTC=8, {MQTT_VERSION}')
-            elif self.app_sub_state == 2:  # Set internal TLS handshake certificate
-                self.cmd_issue(f'AT+TLSC=1,1,"{TLS_CERT_DPS}"')
-            elif self.app_sub_state == 3:  # Set Device CERTIFICATE filename
-                self.cmd_issue(f'AT+TLSC=1,2,"{DEVICE_CERT_FILENAME}"')
-            elif self.app_sub_state == 4:  # Set Device KEY filename
-                self.cmd_issue(f'AT+TLSC=1,3,"{DEVICE_KEY_FILENAME}"', 1)  # Skip next state
-            elif self.app_sub_state == 5:  # Set TLS provisioning server name
-                self.cmd_issue(f'AT+TLSC=1,5,"{TLS_PROVISION_SERVER}"')
-            elif self.app_sub_state == 6:  # Set TLS configuration index see "AT+TLSC"
-                self.cmd_issue(f'AT+MQTTC=7, {TLS_CFG_INDEX}')
-            elif self.app_sub_state == 7:  # DPS broker URL Azure
-                self.cmd_issue(f'AT+MQTTC=1,"{MQTT_BROKER_URL}"')
-            elif self.app_sub_state == 8:  # DPS broker port (TLS)
-                self.cmd_issue(f'AT+MQTTC=2,{MQTT_BROKER_PORT}')
-            elif self.app_sub_state == 9:  # MQTT Client ID
-                 self.cmd_issue(f'AT+MQTTC=3,"{MQTT_CLIENT_ID}"')
-            elif self.app_sub_state == 10:  # MQTT Username
-                self.cmd_issue(f'AT+MQTTC=4,"{ID_SCOPE}/registrations/{MQTT_CLIENT_ID}/api-version={API_VERSION_DPS}"', 1)
-            elif self.app_sub_state == 11:
-                self.cmd_issue(f'AT+MQTTC=5,""')
-            elif self.app_sub_state == 12:  # Set MQTT Keep Alive
-                self.cmd_issue(f'AT+MQTTC=6, {MQTT_KEEP_ALIVE}')
-            elif self.app_sub_state == 13:  # MQTT connection attempt
-                self.cmd_issue('AT+MQTTCONN=1', 1, "+MQTTCONNACK")  # CRITICAL Wait for this response
-            elif self.app_sub_state == 14:  # MQTT subscription
-                self.mqtt_subscribe(TOPIC_DPS_RESULT, 0, 1, "+MQTTSUB:0")
-                # ref: evt_topic_subscribed()
-            elif self.app_sub_state == 15:  # MQTT registration
+            elif self.app_sub_state == 1:  # MQTT subscription
+                 self.mqtt_subscribe(TOPIC_DPS_RESULT, 0, 1, "+MQTTSUB:0")
+                 self.rid += 1
+            elif self.app_sub_state == 2:  # MQTT registration
                 # Send this 'put' command one time...eventually RSP will be "+MQTTSUBRX"
                 # banner(' Publish DPS registration message ')
-                self.rid += 1
                 if OPERATION_ID == '' or ASSIGNED_HUB == '' or FORCE_DPS_REG:
                     # If the above values are populated, the DPS registration has already been done
                     # so we can skip the registration state and save some time. If the "app.cfg"
@@ -1129,137 +1439,132 @@ class AzCloud:
                                       ('{\\\"payload\\\": {\\\"modelId\\\": \\\"' + DEVICE_TEMPLATE + '\\\"}}'),
                                       0,  # State Increment in "evt_dps_topic_notified()"
                                       "+MQTTSUBRX:")
+                    self.rid += 1
                 else:
                     # Skip DPS and save about 20s of setup time
-                    self.set_state(APP_STATE_DPS_REGISTER, 17)
-            elif self.app_sub_state == 16:  # Send command every 3s until response is received
+                    self.set_state(APP_STATE_DPS_REGISTER, self.app_sub_state + 2)
+            elif self.app_sub_state == 3:  # Send command every 3s until response is received
                 self.delay.start()
                 if self.delay.delay_sec_poll(3):
                     # "delay_sec_poll()" returns True if time exceeded
-                    self.rid += 1
                     self.mqtt_publish(0, 0, (
                         f'{TOPIC_DPS_POLL_REG_COMPLETE1}{self.hex_rid()}{TOPIC_DPS_POLL_REG_COMPLETE2}{OPERATION_ID}'),
                                       "",
                                       0,  # State Increment in "evt_dps_topic_notified()"
                                       "+MQTTSUBRX:")
-            elif self.app_sub_state == 17:
+            elif self.app_sub_state == 4:  #
+                self.cmd_issue(f'AT+MQTTC=1,"{ASSIGNED_HUB}"')
+            elif self.app_sub_state == 5:
+                # CRITICAL COMMAND: API version different from DPS version causes Get Device Twin
+                #                   to fail in State 4!
+                self.cmd_issue(f'AT+MQTTC=4,"{ASSIGNED_HUB}/{MQTT_CLIENT_ID}/?api-version={API_VERSION_DEV_TWIN}"')
+            elif self.app_sub_state == 6:
+                self.cmd_issue('AT+MQTTDISCONN=0', 1, "+MQTTCONN:0")
+            elif self.app_sub_state == 7:  # Report MQTT settings
+                self.cmd_issue(f'AT+MQTTC')
+            elif self.app_sub_state == 8:  # MQTT make the connection
+                self.cmd_issue(f'AT+MQTTCONN=1', 1, "+MQTTCONNACK", 60)  # CRITICAL Wait for this response
+            elif self.app_sub_state == 9:
                 self.app_sub_state = APP_STATE_COMPLETE
             else:
                 dbg_banner(f' Warning: Unhandled "sm_dps_register()" state ({self.app_sub_state})!')
                 self.app_sub_state = APP_STATE_COMPLETE
         return self.app_sub_state
 
-    ####################################
-    ### 3 - APP_STATE_IOTC_CONNECT
-    ####################################
+    ##########################################
+    ### 4 - APP_STATE_IOTC_CONNECT
+    ##########################################
     def sm_iotc_connect(self) -> int:
         """ Configure and connect to iotc MQTT broker"""
-        tlsc_index = TLS_CFG_INDEX  # TLSC Index(1) used in DPS.
-        # We could use Index(2) here instead
         if self.app_sub_state == 0:
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
-                banner(f' {APP_STATE_IOTC_CONNECT} - APP_STATE_IOTC_CONNECT', BANNER_BORDER_LEV_1)
+                banner_txt = f' {APP_STATE_IOTC_CONNECT} - APP_STATE_IOTC_CONNECT '
+                banner(f'{banner_txt}', BANNER_BORDER_LEV_1)
+                self.log_state(banner_txt)
             self.set_state(APP_STATE_IOTC_CONNECT, 1)
         else:
             if self.app_wait:  # Wait here until last command completes
                 return self.app_sub_state
-            elif self.app_sub_state == 1:  
-                # CRITICAL COMMAND: API version different from DPS version causes Get Device Twin
-                #                   to fail in State 4!
-                self.cmd_issue(f'AT+MQTTC=4,"{ASSIGNED_HUB}/{MQTT_CLIENT_ID}/?api-version={API_VERSION_DEV_TWIN}"')
-            elif self.app_sub_state == 2:  # 
-                self.cmd_issue(f'AT+MQTTC=1,"{ASSIGNED_HUB}"')
-            elif self.app_sub_state == 3:
-                self.cmd_issue('AT+MQTTDISCONN=0', 1, "+MQTTCONN:0")
-            elif self.app_sub_state == 4:  # Set internal TLS handshake certificate
-                self.cmd_issue(f'AT+TLSC={tlsc_index},1,"{TLS_CERT_IOTC}"')
-            elif self.app_sub_state == 5:  # Set Device CERTIFICATE filename
-                self.cmd_issue(f'AT+TLSC={tlsc_index},2,"{DEVICE_CERT_FILENAME}"')
-            elif self.app_sub_state == 6:  # Set Device KEY filename
-                self.cmd_issue(f'AT+TLSC={tlsc_index},3,"{DEVICE_KEY_FILENAME}"')
-            elif self.app_sub_state == 7:  # Set TLS device server
-                self.cmd_issue(f'AT+TLSC={tlsc_index},5,"{TLS_DEVICE_SERVER}"')
-            elif self.app_sub_state == 8:  # Set TLS indexEnable TLS
-                self.cmd_issue(f'AT+MQTTC=7,{tlsc_index}')
-            elif self.app_sub_state == 9:  # Report MQTT settings
-                self.cmd_issue(f'AT+MQTTC')
-            elif self.app_sub_state == 10:  # MQTT make the connection
-                self.cmd_issue(f'AT+MQTTCONN=1', 1, "+MQTTCONNACK")  # CRITICAL Wait for this response
-            elif self.app_sub_state == 11:
+            elif self.app_sub_state == 1:
                 self.cmd_issue(f'AT+MQTTSUB="{TOPIC_IOTC_METHOD_REQ}",0', 1, "+MQTTSUB:0")
-            elif self.app_sub_state == 12:
+                # self.cmd_issue(f'NOOP')
+            elif self.app_sub_state == 2:
                 self.cmd_issue(f'AT+MQTTSUB="{TOPIC_IOTC_PROP_DESIRED}",0', 1, "+MQTTSUB:0")
-            elif self.app_sub_state == 13:
+                # self.cmd_issue(f'NOOP')
+            elif self.app_sub_state == 3:
                 self.cmd_issue(f'AT+MQTTSUB="{TOPIC_IOTC_PROPERTY_RES}",0', 1, "+MQTTSUB:0")
-            elif self.app_sub_state == 14:
+                # self.cmd_issue(f'NOOP')
+            # elif self.app_sub_state == 4:       # FNWF11 Only
+            #     if MODEL == "RNWF11":
+            #         self.cmd_issue(f'AT+MQTTSUBLST', 1)
+            #     else:
+            #         self.app_sub_state += 1
+            elif self.app_sub_state == 4:
                 self.app_sub_state = APP_STATE_COMPLETE
             else:
                 dbg_banner(f' Warning: Unhandled "sm_iotc_connect()" state ({self.app_sub_state})!')
                 self.app_sub_state = APP_STATE_COMPLETE
         return self.app_sub_state
 
-    ####################################
-    ### 4 - APP_STATE_IOTC_GET_DEV_TWIN
-    ####################################
+    ##########################################
+    ### 5 - APP_STATE_IOTC_GET_SET_DEV_TWIN
+    ##########################################
     def iotc_get_device_twin_state(self) -> int:
         if self.app_sub_state == 0:
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
-                banner(f' {APP_STATE_IOTC_GET_DEV_TWIN} - APP_STATE_IOTC_GET_DEV_TWIN', BANNER_BORDER_LEV_1)
-            self.set_state(APP_STATE_IOTC_GET_DEV_TWIN, 1)
+                banner_txt = f' {APP_STATE_IOTC_GET_SET_DEV_TWIN} - APP_STATE_IOTC_GET_SET_DEV_TWIN '
+                banner(f'{banner_txt}', BANNER_BORDER_LEV_1)
+                self.log_state(banner_txt)
+# TODO: RIO2 check
+            self.set_state(APP_STATE_IOTC_GET_SET_DEV_TWIN, 1)
         else:
             if self.app_wait:  # Wait here until last command completes
                 return self.app_sub_state
             elif self.app_sub_state == 1:
                 print("Read current device twin settings from IOTC")
                 self.rid += 1
-
                 self.mqtt_publish(0, 0,
                                   f'{TOPIC_IOTC_PROPERTY_REQUEST}{self.hex_rid()}',
                                   "", 1, "+MQTTSUBRX:")
             elif self.app_sub_state == 2:
+                self.rid += 1
+                #print("Report Read-Only Property: IP Address = " + self.ip_addr_ipv4)
+                self.iotc_str_property_send("ipAddress", self.ip_addr_ipv4, 1, "MQTTPUB")
+                self.demo_display("ipAddress", DEVICE_2_CLOUD)
+            elif self.app_sub_state == 3:
+                #print("Report Writable Property: LED State")
+                print(f'Synchronizing LED0, reportRate, press_count, and counter values with the Azure...')
+                self.iotc_led0 = 1                      # Range is 1-3
+                self.iotc_int_property_send("LED0", str(self.iotc_led0), 1)
+                self.demo_display("LED0", DEVICE_2_CLOUD)
+            elif self.app_sub_state == 4:
+                #print("Report Writable Property: Telemetry Reporting Rate")
+                self.telemetry_interval = self.telemetry_ints[self.telemetry_index]
+                self.iotc_int_property_send("reportRate", self.telemetry_interval, 1)
+                self.demo_display("reportRate", DEVICE_2_CLOUD)
+            elif self.app_sub_state == 5:
+                self.iotc_button_press_count = 0
+                # JSON Payload eg: "{\"buttonEvent\": {\"button_name\": \"SW0\",\"press_count\": 3}}"
+                payload = ('{\\\"buttonEvent\\\": {\\\"button_name\\\": \\\"SW0\\\",\\\"press_count\\\": ' +
+                           str(self.iotc_button_press_count) + '}}')
+                self.iotc_json_telemetry_send(payload, 1)
+                self.demo_display('buttonEvent', DEVICE_2_CLOUD)
+            elif self.app_sub_state == 6:
+                self.iotc_counter = 0
+                self.iotc_int_telemetry_send("counter",
+                                         self.iotc_counter, 1, "counter")
+                self.demo_display('counter', DEVICE_2_CLOUD)
+            elif self.app_sub_state == 7:
                 self.app_sub_state = APP_STATE_COMPLETE
+                self.demo_display()
             else:
                 dbg_banner(f' Warning: Unhandled "iotc_get_device_twin_state()" state ({self.app_sub_state})!')
                 self.app_sub_state = APP_STATE_COMPLETE
         return self.app_sub_state
 
-    ####################################
-    ### 5 - APP_STATE_SET_PROPERTIES
-    ####################################
-    def sm_azure_properties(self) -> int:
-        if self.app_sub_state == 0:
-            if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
-                banner(f' {APP_STATE_SET_PROPERTIES} - APP_STATE_SET_PROPERTIES', BANNER_BORDER_LEV_1)
-            self.set_state(APP_STATE_SET_PROPERTIES, 1)
-        else:
-            if self.app_wait:  # Wait here until last command completes
-                return self.app_sub_state
-            elif self.app_sub_state == 1:
-                self.rid += 1
-                #print("Report Read-Only Property: IP Address = " + self.ip_addr)
-                self.iotc_str_property_send("ipAddress", self.ip_addr_wifi, 1, "MQTTPUB")
-                self.ip_addr = self.ip_addr_wifi
-                self.demo_display("ipAddress", DEVICE_2_CLOUD)
-            elif self.app_sub_state == 2:
-                #print("Report Writable Property: LED State")
-                self.iotc_led0 = 1                      # Range is 1 - 3
-                self.iotc_int_property_send("LED0", str(self.iotc_led0), 1)
-                self.demo_display("LED0", DEVICE_2_CLOUD)
-            elif self.app_sub_state == 3:
-                #print("Report Writable Property: Telemetry Reporting Rate")
-                self.telemetry_interval = self.telemetry_ints[self.telemetry_index]
-                self.iotc_int_property_send("reportRate", self.telemetry_interval, 1)
-                self.demo_display("reportRate", DEVICE_2_CLOUD)
-            elif self.app_sub_state == 4:
-                self.app_sub_state = APP_STATE_COMPLETE
-            else:
-                self.app_sub_state = APP_STATE_COMPLETE
-                dbg_banner(f' Warning: Unhandled "sm_azure_properties()" state ({self.app_sub_state})!') 
-        return self.app_sub_state
-
-    ####################################
+    ##########################################
     ### 6 - APP_STATE_IOTC_DEMO
-    ####################################
+    ##########################################
     # IOTC Demo variables
 
     # Class Variables                Type      Name            Direction
@@ -1272,17 +1577,27 @@ class AzCloud:
     # self.reboot_timer = 0          Command   "reboot"        # C2D
     # self.iotc_echo = ''            Command   "echo"          # C2D
     def sm_iotc_demo_app(self) -> int:
+        banner_txt = f' {APP_STATE_IOTC_DEMO} - APP_STATE_IOTC_DEMO '
+
         if self.app_sub_state == 0:
+            if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
+                banner(f'{banner_txt}', BANNER_BORDER_LEV_1)
             # If the demo banner/help is not display it appears hung...so always display
-            # if APP_DISPLAY_LEVEL >= APP_DISPLAY_STATES:
             banner(help_str_6, BANNER_BORDER_LEV_1)
+            self.log_state(banner_txt)
             self.set_state(APP_STATE_IOTC_DEMO, 1)
         else:
             if self.app_wait:  # Wait here until last command completes
                 return self.app_sub_state
-            # elif self.app_sub_state == 1:  # Ping keep alive
-            #   self.cmd_issue(f'AT+PING="{ASSIGNED_HUB}"', 1, ASSIGNED_HUB)
-            elif self.app_sub_state == 1:           # IoTC Counter
+            #
+            # First 3 states preset the Azure's copy of: Device IP Address, LED value and Telemetry report rate
+            #
+            elif self.app_sub_state == 1:
+                self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_LOOP)
+                #
+                # SubState 1:  Main state handler all user input keys 'B', 'C', etc
+                #
+            elif self.app_sub_state == APP_SUB_STATE_DEMO_LOOP:
                 # Display state 6 help screen
                 if self.kb.key_cmd == HELP_KEY:
                     banner(help_str_6, BANNER_BORDER_LEV_2)
@@ -1299,7 +1614,7 @@ class AzCloud:
                     # JSON Payload eg: "{\"buttonEvent\": {\"button_name\": \"SW0\",\"press_count\": 3}}"
                     payload = ('{\\\"buttonEvent\\\": {\\\"button_name\\\": \\\"SW0\\\",\\\"press_count\\\": ' +
                                str(self.iotc_button_press_count) + '}}')
-                    self.iotc_json_telemetry_send(payload)
+                    self.iotc_json_telemetry_send(payload , 1)
                     self.demo_display('buttonEvent', DEVICE_2_CLOUD)
                 #
                 # Sends TELEMETRY 'counter' [0-n] ==> Azure. Counter incremented and sent to Azure
@@ -1368,19 +1683,19 @@ class AzCloud:
                         self.set_state(APP_STATE_WIFI_CONNECT, 0)
                     elif not self.broker_connected:
                         banner(f'Attempting to reconnect to the cloud...')
-                        self.set_state(APP_STATE_IOTC_CONNECT, 9) # was 4
+                        self.set_state(APP_STATE_DPS_REGISTER, 8)
                     else:
                         banner(f'Cannot "resume" while Azure is still connected.')
 
-                else:
-                    self.set_state(APP_STATE_IOTC_DEMO, 1)
+                else:   # Back to top of the Demo Loop
+                    self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_LOOP)
 
                 # Clear the fs_command
                 self.kb.cmd = ''
                 self.kb.key_cmd = ''
 
-            elif self.app_sub_state == 2:
-                self.app_sub_state = 1
+            elif self.app_sub_state == 3:       # If Demo state 2 is complete, loop back in and continue
+                self.app_sub_state = APP_SUB_STATE_DEMO_LOOP
 
             #
             # Send ack messages back to Azure with a MQTTPublish
@@ -1389,7 +1704,7 @@ class AzCloud:
             # This sub-state is set in 'evt_iotc_command()' after receiving a NON-ZERO time 'reboot' or 'message'
             # command from the cloud. We must acknowledge it. For either a 'Success' status is returned.
             # Without it the cloud will display an error.
-            elif self.app_sub_state == 3:
+            elif self.app_sub_state == APP_SUB_STATE_DEMO_SUCCESS_RSP:
                 self.cmd_check(True)    # Kill any outstanding commands
                 self.mqtt_publish(0, 0, f'{TOPIC_IOTC_CMD_RESP}{self.hex_rid()}',
                                   '{\\\"status\\\" : \\\"Success\\\"}', 99, "OK")
@@ -1398,12 +1713,14 @@ class AzCloud:
             # cloud.  We must acknowledge it. For a reboot cancellation we acknowledge it with a 'Failure' status by
             # choice!  Without it the cloud will display an error. Failure is just an indication the reboot time
             # has been cancelled and is for demonstration purposes only...its not really a failure.
-            elif self.app_sub_state == 4:
+            elif self.app_sub_state == APP_SUB_STATE_DEMO_FAILURE_RSP:
                 self.cmd_check(True)  # Kill any outstanding commands
                 self.mqtt_publish(0, 0, f'{TOPIC_IOTC_CMD_RESP}{self.hex_rid()}',
                                   '{\\\"status\\\" : \\\"Failure\\\"}', 99, "OK")
+
+            # This 'else' will catch any 'next_step = 99' to loop back to the top of the Demo loop
             else:
-                self.set_state(APP_STATE_IOTC_DEMO, 1)
+                self.set_state(APP_STATE_IOTC_DEMO, APP_SUB_STATE_DEMO_LOOP)
 
             # Update interval if it's running or should be. Azure could have sent us a 'reportRate'
             # property change. If so that was handled by evt_iotc_property_received()
@@ -1444,7 +1761,7 @@ class AzCloud:
         resp = ''
 
         data_dict = {"counter": self.iotc_counter, "buttonEvent": self.iotc_button_event,
-                     "ipAddress": self.ip_addr, "LED0": self.iotc_led0,
+                     "ipAddress": self.ip_addr_ipv4, "LED0": self.iotc_led0,
                      "reportRate": self.telemetry_interval, "reboot": self.reboot_timer,
                      "echoString": self.iotc_echo}
 
@@ -1474,7 +1791,7 @@ class AzCloud:
 
         dat = f'{str(self.iotc_counter) : ^{spc[0]}}' \
               f'{str(self.iotc_button_press_count) : ^{spc[1]}}' \
-              f'{str(self.ip_addr) : ^{spc[2]}}' \
+              f'{str(self.ip_addr_ipv4) : ^{spc[2]}}' \
               f'{str(self.iotc_led0) : ^{spc[3]}}' \
               f'{tele_str: ^{spc[4]}}' \
               f'{str(self.iotc_reboot_delay) : ^{spc[5]}}' \
@@ -1486,12 +1803,12 @@ class AzCloud:
                 try:
                     data_dir = self.resp_dict[key]
                 except KeyError:
-                    resp += f'{"---" : ^{spc[index] + 0}}'
+                    resp += f'{"---" : ^{spc[index]}}'
                     continue
                 if data_dir == DEVICE_2_CLOUD:
-                    resp += f'{"D>C" : ^{spc[index] - 0}}'
+                    resp += f'{"D>C" : ^{spc[index]}}'
                 elif data_dir == CLOUD_2_DEVICE:
-                    resp += f'{"C>D" : ^{spc[index] - 0}}'
+                    resp += f'{"C>D" : ^{spc[index]}}'
         else:
             resp = ''
 
@@ -1499,6 +1816,7 @@ class AzCloud:
 
         self.resp_dict.clear()
         self.iotc_echo = ''
+
 
     def iotc_json_telemetry_send(self,
                                 payload: str,
@@ -1572,25 +1890,25 @@ class AzCloud:
         if self.app_state >= APP_STATE_IOTC_DEMO:   # Don't fault in Demo state
             return False
 
-        print(f'          : {rsp} ({cmd_time:.2f}s)\n', flush=True, end='')
+        self.cmd_log(f'          : {rsp} ({cmd_time:.2f}s)\n')
 
         cmd_fail = self.at_command
 
-        if err_sig.find('01:09') != -1:
+        if rsp.find('[ER]:NTP') != -1:
             # Actually failed @ 01:12 but due to cfg issue @ 01:09
             cmd_fail=  f'AT+SNTPC=3,"{NTP_SERVER}"'
             iss = f'Wi-Fi NTP ({NTP_SERVER}) configuration'
             sol = f'- Verify Network Time Server is online'
-            tip = f'- Specify a different NTP server in \'{APP_CONFIG_FILE}\' '
-        elif err_sig.find('01:12') != -1:
+            tip = f'- Specify a valid NTP server in \'{APP_CONFIG_FILE}\' '
+        elif rsp.find('STA Connection Failed') != -1:
             iss = f'Wi-Fi ({WIFI_SSID}) configuration'
-            sol = f'- Verify router power, passphrase and security settings'
+            sol = f'- Verify router power, BSID, passphrase and security settings'
             tip = f'- Use the CLI \'scan\' tool'
-        elif err_sig.find('02:03') != -1:
+        elif err_sig.find('01:17') != -1:
             iss = f'TLS DEVICE Certificate '
             sol = f'- Load device certificate (\'{DEVICE_CERT_FILENAME}\') and verify \'device_cert_filename\' in \'{APP_CONFIG_FILE}\''
             tip = f'- Use CLI command \'dir c\' to view installed certificates'
-        elif err_sig.find('02:04') != -1:
+        elif err_sig.find('01:18') != -1:
             iss = f'TLS KEY Certificate '
             sol = f'- Load KEY certificate (\'{DEVICE_KEY_FILENAME}\') and verify \'device_key_filename\' in \'{APP_CONFIG_FILE}\''
             tip = f'- Use CLI command \'dir k\' to view installed key certificates'
@@ -1602,9 +1920,9 @@ class AzCloud:
         print('\n')
 
         msg = f' An ERROR has been detected:\n'
-        msg += f' CMD[{err_sig}]:  {cmd_fail} ({cmd_time:.2f}s)\n'
+        msg += f' CMD[{err_sig}]: {cmd_fail} ({cmd_time:.2f}s)\n'
         try:
-            msg += f' ERR:         {rsp.split("[ER]:")[1]}\n'
+            msg += f' ERR[{err_sig}]: {rsp.split("[ER]:")[1]}\n'
         except:
             pass
 
@@ -1661,12 +1979,14 @@ class AzCloud:
         #
         if self.at_command_resp != "" and self.at_command_resp in rsp: # and self.at_command:
             # Solicited Response line display i.e. commands that have COMPLETED.
-            print(f'RSP[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {rsp} ({cmd_time:.2f}s)\n', flush=True, end='')
+            # print(f'RSP[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {rsp} ({cmd_time:.2f}s)\n', flush=True, end='')
+            self.cmd_log(f'RSP[{self.app_state:0>2}.{self.app_sub_state:0>2}]: {rsp} ({cmd_time:.2f}s)')
             self.at_command_timer.stop()
             self.at_command_prev = self.at_command
             self.at_command = ""
             self.at_command_resp = ""
             self.app_wait = False
+            self.at_quiet_command = False
 
             # Increment to the next sub-state
             if APP_STATE_CLI <= self.app_state <= APP_STATE_IOTC_DEMO:
@@ -1675,7 +1995,7 @@ class AzCloud:
                 self.app_sub_state += int(self.next_sub_state_offset)
 
             # Turn on the Demo Display once we start sending & receiving Azure data in states 5 & 6
-            if self.app_state >= APP_STATE_SET_PROPERTIES:
+            if self.app_state >= APP_STATE_IOTC_DEMO:
                 self.demo_display()
         else:
             # Blocks "+TIME" text and clears the Rx buffer to keep the CLI less cluttered.
@@ -1690,7 +2010,7 @@ class AzCloud:
         # Unsolicited command response line display.
         #    RSP's received without an outstanding matched command, are displayed here.
         if rsp != '' and self.at_command_timer.isStarted:
-            print(f'          : {rsp}', end='')
+            self.cmd_log(f'          : {rsp}') #, end='')
 
         # Special handlers for CLI File system commands
         if rsp != "":
@@ -1728,7 +2048,11 @@ class AzCloud:
             self.wifi_connected = True
             start = received.find('"') + 1      # eg: '+WSTAAIP:1,"172.31.99.108"\r\n>'
             end = start + received[(start + 1):].find('"') + 1
-            self.ip_addr_wifi = received[start:end]
+            ipaddress = received[start:end]
+            if ipaddress.find(':') != -1:       # Check for IPv6
+                self.ip_addr_ipv6 = received[start:end]
+            elif ipaddress.find('.') != -1:     # Check for IPv4
+                self.ip_addr_ipv4 = received[start:end]
             self.evt_handler = self.evt_wifi_connected
 
         elif "+MQTTC +MQTTC:1," in rsp:
@@ -1738,6 +2062,22 @@ class AzCloud:
                 for i in range(1, len(mqttc_list)):
                     print(f'            +{mqttc_list[i]}')
 
+        elif "+MQTTC=4 +MQTTC:4" in rsp:  # and self.is_model("RNWF11"):
+            # Only reassign the Hub if the api-version is NOT present AND Hub is blank
+            if globals()["ASSIGNED_HUB"] == '' and not (rsp.__contains__("api-version=")):
+                # Parse the HUB ID from the string stored in the RNWF11 device...
+                # rsp: 'AT+MQTTC=4 +MQTTC:4,"iotc-62ad...c1e134.azure-devices.net/sn01232943D301723001" OK>'
+                try:
+                    if rsp.__contains__('azure-devices.net'):
+                        # Split the rsp at the quotes, then split 2nd element from end @ the '/'
+                        globals()["ASSIGNED_HUB"] = rsp.split('"')[-2].split('/')[0]
+                except:
+                    banner(f' Error: Assigned Hub not reported by the RNWF11 device.\n\n'
+                           f'  DPS registration failed! In \'{APP_CONFIG_FILE}\'...\n'
+                           f'  * Verify \'id_scope\' value is correct\n'
+                           f'  * Delete values for \'operation_id\' or \'assigned_hub\'\n')
+
+                    exit(1)
         elif "AT+MQTTCONN" == self.at_command_prev:
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
                 banner(f' Event: Broker Not Connected - Query Current Connection Status')
@@ -1745,7 +2085,8 @@ class AzCloud:
         elif "AT+MQTTDISCONN=0" == self.at_command_prev:
             self.broker_connected = False
             if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
-                banner(f' Event: Broker DISCONNECTED - By Command')
+                print('\n', flush=True)
+                banner(f' Event: Broker DISCONNECTED - By Command\n')
 
         elif "+MQTTCONN:0" in received:
             self.broker_connected = False
@@ -1768,6 +2109,22 @@ class AzCloud:
             if self.app_state == APP_STATE_IOTC_CONNECT:
                 if APP_DISPLAY_LEVEL >= APP_DISPLAY_INFO:
                     banner(' Event: Broker Connected for IOTC')
+        elif "+MQTTSUBLST:" in received:
+            if APP_DISPLAY_LEVEL >= APP_DISPLAY_DECODES:
+                # mqttc_str = rsp.replace(",", " - ")
+
+                mqttc_str = self.substr_swap(rsp, {",0 [OK]": "", "AT+MQTTSUBLST": "", "0 +MQTTSUBLST:": "",
+                                                       "+MQTTSUBLST:": "", ",0\r\nOK\r\n": ""})
+                # , "+MQTTSUBLST": ","})
+                mqttc_list = mqttc_str.split(",")
+                # print(f' MQTT Subscriptions\n ------------------')
+                # for i in range(0, len(mqttc_list)):
+                #     print(f' {i+1}: {mqttc_list[i].lstrip()}')
+
+                mqttc_str = f' MQTT Subscriptions:\n───────────────────\n'
+                for i in range(0, len(mqttc_list)):
+                    mqttc_str += f' {i+1}: {mqttc_list[i].lstrip()}\n'
+                banner(mqttc_str)
 
         elif "+MQTTSUBRX:" in received:
             # print("SRx: " + rsp, flush=True)
@@ -1792,9 +2149,21 @@ class AzCloud:
                 if self.sub_payload == "":
                     self.sub_payload = received
                     self.evt_handler = self.evt_iotc_property_download
+        elif "+ECCRDSER:" in received and self.is_model("RNWF11"):
+            start = received.find('"') + 1      # eg: '+ECCRDSER:18,"01232943D301723001"'
+            end = start + received[(start + 1):].find('"') + 1
+            #MQTT_CLIENT_ID
+            iotp.params["mqtt_client_id"] = f'sn{received[start:end]}'
+            iotp.params["device_cert_filename"] = iotp.params["mqtt_client_id"]
+            iotp.params["device_key_filename"] = iotp.params["mqtt_client_id"]
+            iotp.write()
+
+            globals()["MQTT_CLIENT_ID"] = iotp.params["mqtt_client_id"]
+        elif "+ECCRDCERT:" in received and self.is_model("RNWF11"):
+            if "AT+ECCRDCERT=" in rsp and "OK" in rsp:
+                self.evt_handler = self.evt_cert_received(rsp)
         elif self.evt_handler == "":
             pass
-
         if rsp != "":
             print("")
 
@@ -1826,7 +2195,7 @@ class AzCloud:
             print(f'FS Unknown Command: {cli_list}')
 
     def keyboard_listen(self) -> None:
-        # wait for keyboard events
+        """ Wait for keyboard events """
 
         # Don't poll keyboard during initial RESET
         if self.app_state == APP_STATE_WIFI_CONNECT and self.app_sub_state == 1:
@@ -1838,11 +2207,20 @@ class AzCloud:
             if LOCAL_ECHO:
                 # Second ESC press to exit application
                 if self.app_state == APP_STATE_CLI:
-                    print("Exit Application\n", flush=True)
+                    sleep(0.1)
+                    if self.broker_connected:
+                        self.cmd_log(f'\nDisconnecting Broker...\n')
+                        self.cmd_issue_quiet('AT+MQTTDISCONN=0', 0, "+MQTTCONN:0")
+                        sleep(0.5)
+                    self.cmd_log(f'\nExit Application\n')
+                    print(f'\n')
+                    print('\n')
                     exit(0)
                 else:
                     # First ESC press to APP_STATE_CLI
                     self.cmd_check(True)
+                    self.cmd_log(f'Exit To CLI...\n')
+                    print('\n')
                     self.set_state(APP_STATE_CLI, 0)
         else:
             if self.kb.cmd_received():
@@ -1884,12 +2262,12 @@ class AzCloud:
         self.kb.cmd_clear()
 
     ##################################
-    ### RunApp (Mainline)
+    ### run_app (Mainline)
     ##################################
-    def runApp(self) -> None:
+    def run_app(self) -> None:
         """ Mainline application """
         resp: int = 0
-        self.keyboard_listen()                           # read keybrd, scan for exit (ESC) or AT commands
+        self.keyboard_listen()                          # read keyboard, scan for exit (ESC) or AT commands
         self.cmd_check(False)                           # Checks for command timeout
 
         # Check for Azure commanded reboot
@@ -1903,8 +2281,13 @@ class AzCloud:
                 print("\nExit Application\n", flush=True)
                 exit(0)
 
-        elif self.app_state == APP_STATE_WIFI_CONNECT:  # Start Wi-Fi statemachine
+        if self.app_state == APP_STATE_WIFI_CONNECT:  # Start Wi-Fi statemachine
             resp = self.sm_wifi_init()
+            if resp == APP_STATE_COMPLETE:
+                self.set_state(APP_STATE_MQTT_SETTINGS)
+
+        elif self.app_state == APP_STATE_MQTT_SETTINGS:  # Set MQTT settings
+            resp = self.sm_mqtt_settings()
             if resp == APP_STATE_COMPLETE:
                 self.set_state(APP_STATE_DPS_REGISTER)
 
@@ -1916,15 +2299,10 @@ class AzCloud:
         elif self.app_state == APP_STATE_IOTC_CONNECT:  # Connect to Azure IOTC
             resp = self.sm_iotc_connect()
             if resp == APP_STATE_COMPLETE:
-                self.set_state(APP_STATE_IOTC_GET_DEV_TWIN)
+                self.set_state(APP_STATE_IOTC_GET_SET_DEV_TWIN)
 
-        elif self.app_state == APP_STATE_IOTC_GET_DEV_TWIN: # Get Azure device twin
+        elif self.app_state == APP_STATE_IOTC_GET_SET_DEV_TWIN: # Get Azure device twin
             resp = self.iotc_get_device_twin_state()
-            if resp == APP_STATE_COMPLETE:
-                self.set_state(APP_STATE_SET_PROPERTIES)
-
-        elif self.app_state == APP_STATE_SET_PROPERTIES:  # Set Azure parameters
-            resp = self.sm_azure_properties()
             if resp == APP_STATE_COMPLETE:
                 self.set_state(APP_STATE_IOTC_DEMO)
 
@@ -1953,28 +2331,43 @@ class AzCloud:
             print("  Serial port closure FAILED")
         else:
             print(f'  Serial port \'{self.ser.name}\' closed successfully')
-
-
-# Pre-execution setup
+        try:
+            if self.log_file_handle:
+                self.log_file_handle.close()
+                print(f'  Log File closed successfully')
+        except:
+            print(f'  Log File closure FAILED')
+########################################
+# App Startup
+########################################
 os.system('cls')  # Clear terminal screen
-banner(f' Starting {MODEL} IoT Out-Of-Box Azure Demonstration\n'
-       f'       DPS Forced[ {FORCE_DPS_REG} ]  Display Level[ {APP_DISPLAY_LEVEL} ]',
-       BANNER_BORDER_LEV_2)
-print('  Press [ESC][ESC] to exit the script\n')
 
-if COM_PORT == "":  # Auto detect com port
-    COM_PORT = find_com_port()  # True for debug prints
-    if COM_PORT == "":
-        print(f'\n    {MODEL} COM port not found.')
-        exit(APP_RET_COM_NOT_FOUND)
-    else:
-        print(f'  Using {COM_PORT} (Auto Detect)\n')
-else:
-    print(f'  Using {COM_PORT} (Manually set in "{APP_CONFIG_FILE}")\n')
+# Auto detect com port
+MODEL, COM_PORT = find_com_port()
+if MODEL == "":
+    # Show failed startup banner
+    banner(f' IoT Out-Of-Box Azure Demonstration\n'
+                     f'              FAILED\n'
+                     f'  Compatible device not detected',
+           BANNER_BORDER_LEV_2)
+    print(f'\n')
+    exit(APP_RET_COM_NOT_FOUND)
+
 
 # Instantiate global classes
-ac = AzCloud(COM_PORT, 230400)  # Create primary AzCloud object
+ac = IotCloud(COM_PORT, 230400)      # Create primary IotCloud object
+if APP_CMD_LOG_FILE:
+    logline = f' Log File:  {APP_CMD_LOG_PATH}/{APP_CMD_LOG_FILE} '
+else:
+    logline = f' Log File:  Disabled'
 
+# Show startup banner
+banner(f' Starting {MODEL} IoT Out-Of-Box Azure Demonstration\n'
+       f'              Detected {MODEL} on {COM_PORT} \n'
+       f'         DPS Forced[ {FORCE_DPS_REG} ]  Display Level[ {APP_DISPLAY_LEVEL} ] \n'
+       f'\n{logline: ^50}\n',
+       BANNER_BORDER_LEV_2)
+print(f'  {"Press [ESC][ESC] to exit the script": ^50}\n')
 
 try:
     MAX_ID_LEN = 23
@@ -1990,7 +2383,7 @@ try:
     while True:  # Start the app
         if ac.app_state_prev != ac.app_state:
             ac.app_state_prev = ac.app_state
-        ac.runApp()
+        ac.run_app()
 
 except KeyboardInterrupt:
     print(f'\n\n   [CTRL-C] User Exit')

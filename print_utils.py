@@ -67,10 +67,9 @@ def max_line_len(msg: str) -> int:
       not_line_one = 1
     return max_len
 
-
 def banner(banner_msg: str, line_char: str = '─') -> None:
   """
-  Prints a string message with a upper & lower character border
+  Prints a string message with an upper & lower character border
   Supports multi-line banners. If leading space is supplied on
   the first line, that space indents subsequent lines. Leading
   space is also mirrored to the end of the message lines.
