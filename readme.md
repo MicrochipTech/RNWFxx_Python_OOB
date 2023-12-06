@@ -714,7 +714,7 @@ The "log" option in the 'app.cfg' file allows the user to specify the log file n
 | Success |Disabled|Failure |
 |:--:|:--:|:--:|
 |"logs": "%M.log" (default)|    "logs": ""|"logs": "%M?.log" (illegal char '?' used) |
-|<img src="./assets/logOK.png" width="280"/> |<img src="./assets/logOFF.png" width="280"/>   |<img src="./assets/logER.png" width="280"/>|
+|<img src="./assets/log_ok.png" width="280"/> |<img src="./assets/log_off.png" width="280"/>   |<img src="./assets/log_er.png" width="280"/>|
 
 
 #### Examples
