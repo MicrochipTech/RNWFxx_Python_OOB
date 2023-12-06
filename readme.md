@@ -4,7 +4,7 @@
 
 ## Introduction
 
-This document describes how to connect a Microchip RNFWxx to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is made possible by connecting Microchip's RNFWxx module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
+This document describes how to connect a Microchip RNFWxx to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is then established by connecting Microchip's RNFWxx module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
 
 ### References
 
@@ -82,10 +82,10 @@ The Python script **"oobDemo.py"** uses an external JSON file to record various 
 
 # Clone this Repository
 
-Create a clone of this [repository](https://github.com/MicrochipTech/RNWF02) using the [Git](https://git-scm.com) tool in a command line window
+Create a clone of this [repository](https://github.com/MicrochipTech/RNWFxx_Python_OOB/tree/main) using the [Git](https://git-scm.com) tool in a command line window
 <img src="./assets/todo.png" width="35" alt="">
 ```bash
-git clone https://github.com/MicrochipTech/RNWF02
+git clone https://github.com/MicrochipTech/RNWFxx_Python_OOB.git
 ```
 
 As an alternative, scroll up towards the top of this page, click on the **Code** button, and download a ZIP file of the repository.
@@ -95,14 +95,16 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
 
 # Hardware Preparation
 
-* Set the power jumper, J201, to pins 2 & 3. This sets the module to use USB-C power.
+* Set the power jumper, J201(RNWF02) or J5(RNWF11) to pins 2 & 3. This sets the module to use USB-C power.
 * Connect the "RNFWxx" module to a Windows PC with a "USB-C" cable
-
-    <img src="./assets/Rio-0_USB-C_UART+JumperWiring.png" width="400" alt="">
+  
+|RNWF02|RNWF11|
+|:-:|:-:|
+|<img src="./assets/Rio-0_USB-C_UART+JumperWiring.png" width="400" alt="">|<img src="./assets/Rio-2_USB-C_UART+JumperWiring.png" height="140" alt="">|
 
 ## RNFWxx Serial Test
 
-  * With the RNFWxx module connected via a USB-C cable, verify the _RED_ LED indicating power is illuminated on the board. Its just to the right of the USB-C connector.
+  * With the RNFWxx module connected via a USB-C cable, verify the _RED_ LED indicating power is illuminated on the board. Its to the right of the USB-C connector.
   * If not, check the USB cable and verify the driver for the UART has been loaded via Windows Device Manager.
 * If the new COM port is known, set that in the Terminal program.
   * Configure the port for **230400b,8N1** once enumerated after plugging in the board.
@@ -115,7 +117,7 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
    
 ### RNFWxx Serial Port Troubleshooting
 If the module does not respond there a few things to try. These tips were used with the "Lorris Terminal".
-1. Verify the COM port is configured **230400b,8N1** 
+1. Verify the COM port is configured **230400b, 8N1** 
 2. Verify the Terminal is set to send "CR + LF" or "\r\n" on transmit. If this is not set, the module will not respond to commands!
 3. Disconnect any other USB based UART modules from the PC. Bluetooth UARTs do not need to be disconnected.
 4. Unplug the module and then plug it in again. The PC should make a connection sound and show a new COM port in Device Manager. If it does not you may need to install the driver for the UART.
@@ -171,12 +173,48 @@ The device (client) certificate file will be needed when we create the device in
 Any device which presents a leaf certificate that was derived from the signer (or root) certificate, will automatically be granted access to registration (which is governed by the Device Provisioning Service linked to the IoT Hub that's used by an IoT Central application).
 
 > ## App.cfg Setting
+> **RNWF02:** These values are set manually<br>
+> **RNWF11:** Values are set automatically by the script<br>
+> <br>
 >  _device_cert_filename_ = Desired "COMMON NAME"<br> 
    _device_key_filename_ = Desired "COMMON_NAME"<br>
    _mqtt_client_id_ = Selected "COMMON NAME"<br>
 
 >
-## Generate the Files for Your Chain of Trust
+## RNWF11 ONLY: Generate the Files for Your Chain of Trust
+The RNWF11 module has the ability to generate its own certificates by way of an AT+ command. When the Demo is run, it will automatically create certificates and write them to the **".\tools\CertificateTool\CertBuilds\snXXX...XXX"** folder. The folder name is automatically named using the RNWF11's unique serial number programmed at the factory. The 'app.cfg' file is 
+
+### RNWF11 Certificate Generation
+At this point in the process the "app.cfg" file should contain your Wi-Fi settings. If not set, set them using the process described in [Wi-Fi Test and Security Setting](#wi-fi-test-and-security-setting) section.
+
+1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\\[YOUR_OOB_DEMO_ROOT_FOLDER]\\**<br>
+   It should contain the file "oobDemo.py"
+2. At the command prompt, execute the command:
+   ``` text
+   C:\YOUR_OOB_DEMO_ROOT_FOLDER\>python oobdemo.py
+   ```
+3. The script requires all required values to be set, but since we don't have them yet we will just enter '**none** 4 times'.
+4. The script will then Reset(RST) the module for about 3s, and continue.
+5. Once the script displays, **Event: WiFi connected...(wait for NTP)** you can press the [ESC] key twice to terminate the script.
+   * If you wait, the script will exit to the CLI on its own, where you will need to press [ESC] once to exit.
+   * Creating the certificates does NOT require a Wi-Fi connection. By the time the connection is attempted the certificates have already been made.
+
+| | | |
+|:-: |:-: |:-: |
+|<img src="./assets/enter_none.png" width="200" alt="">|<img src="./assets/wifi_connect.png" width="250" alt=""> |<img src="./assets/app_certs_set.png" width="300" alt=""> | 
+|Enter "none" x 4|Press [ESC][ESC]|New 'app.cfg' Entries<br>Device, Key certs and Client ID automatically set.<br>**ID Scope** will be set in a later step|
+
+#### Optional Verification of Certificate Creation
+The previous step should have created a new folder containing the RNWF11's certificates. The certificate folder name will use the RNWF11's unique, factory programmed serial number. Its the same string shown in the previous step from the 'app.cfg" file.
+1. To locate the new certificates, open Windows Explorer at the root 'oobDemo' repo.
+2. Open the folder **.\OOBDEMO_ROOT\tools\Certificate Tool\CertBuilds\snXXX...XXX**
+3. Verify the 2 files, "device.crt" and "signer.crt" are present.
+4. In a later step "**signer.crt**" will be uploaded to Azure. The "device.crt" certificate is not used.
+5. Skip to the [Create an Azure Account and Subscription](#create-an-azure-account-and-subscription) step.
+
+<img src="./assets/RNWF11_cert_folder_x+.png" width="800" alt="">
+
+## RNWF02 ONLY: Generate the Files for Your Chain of Trust (RNWF02 Only)
 Creating the required self-signed device certificates is semi-automated and only takes a few seconds. The Windows command script, "auto.cmd", prompts the user for a "common name" and then calls two Bash scripts to complete the certificate creation process. These certificates are used later in the "Python oobDemo.py" step below, so take note of the name specified.<br>
 
 The scripts used are based on the [Azure's Create and Upload Certificates for Testing](https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows) tutorial.
@@ -189,8 +227,10 @@ For this demo follow the instructions shown here:
 
 ### [First Method: "Auto.cmd"](./tools/CertificateTool/readme.md)
 
+## Installing Certificates to the RNWF02 module (Not Required for the RNWF11)
 
-## Installing Certificates to the RNWFxx module
+**This step is not required for the RNWF11 module as it generates its own certificates internally.**
+
 We will use the previously installed **sentTo_tool** to flash both the device certificate and device key certificate to the RNWFxx.
 * Open a Windows Explorer window and locate the certificate folder from the previous step. It should be something like this:
 * From Windows Explorer "right-click" on your device "key" file eg: "RNWF02-Dev99.key"
@@ -228,7 +268,7 @@ NOTE: You can access any of your IoT Central applications in the future by signi
 * An _Enrollment Group_ greatly simplifies registering device and is a more practical solution vs. registering each device individually.
 
     > ## App.cfg Setting
-    > _id_scope_ = Will be available when creating an "Enrollment Group" <br>
+    > _id_scope_ = Will be available when creating an "Enrollment Group"<br>
     > <br>  
 
 * [Enrollment Group](./IoT_CentralGroupEnrollment.md)
@@ -262,14 +302,16 @@ With the setup complete, the final step is execution of the "oobDemo.py" script.
 
 
 
-1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\_[YOUR_OOB_DEMO_ROOT_FOLDER]_\\**<br>
+1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\[YOUR_OOB_DEMO_ROOT_FOLDER]\\**<br>
    It should contain the file "oobDemo.py"
 2. At the command prompt, execute the command:
    ```text
    C:\YOUR_OOB_DEMO_ROOT_FOLDER\>python oobdemo.py
    ```
 3. If the "app.cfg" file was not manually updated during the setup procedure, the user will be prompted to enter each parameter now. If the "app.cfg" was updated you will not see these prompts and the script will execute from here.
-   <img src="./assets/AppCfg+.png" width="600"/>
+    |RNWF02|RNWF11|
+    |:-:|:-:|
+   |<img src="./assets/AppCfg+.png" width="400"/>|<img src="./assets/app_cfg_rnwf11+.png" width="390"/>|
 
    * If an incorrect value is entered, Press [CTRL-C] to exit the Python script.
      * Manually edit the 'app.cfg'file with the correction(s) OR
@@ -354,8 +396,9 @@ A simple dashboard for this demo is displayed below. Unfortunately dashboards mu
   2. At the top of the interface press, the "Edit" button.
   3. Your new dashboard comes pre-populated with items you don't need.
      * For each block, click on the "..." button and choose "Delete".
-  4. Select and drag controls from the left column and drop them on the dashboard.
-  5. Use the "pencil" button to configure your new dashboard objects. 
+  4. From the "Start with a visual" option on the left, select and drag controls from the left column and drop them on the dashboard.
+     * The _command control_ is available under the "Start with devices" option on the left.
+  5. Use the "pencil" button to configure your new dashboard objects.
   6. Don't forget to save your work.
    
 |Start...|Finish...|
@@ -444,12 +487,12 @@ States 1 though 5 all perform in a similar manner. Each sub-state within a state
 |State|SubStates|Name|Purpose|
 |:------|:--:|:-----------:|:---------|
 |0|0-2|Command Line(CLI) State|Interactive state for AT+ command execution + internal commands|
-|1|0-13|APP_STATE_WIFI_CONNECT|Setup Wi-Fi registers and connect to the Internet|
-|2|0-17|APP_STATE_DPS_REGISTER|Setup MQTT registers to Register & connect with Azure DPS|
-|3|0-14|APP_STATE_IOTC_CONNECT|Setup MQTT registers for data exchange with Azure|
-|4|0-2|APP_STATE_IOTC_GET_DEV_TWIN|Setup MQTT registers and establish Azure 'Device Twin' connections|
-|5|0-4|APP_STATE_SET_PROPERTIES|Set Azure property values for "ipAddress, "LED0" status, and telemetry "reportRate" |
-|6|0-1|APP_STATE_IOTC_DEMO|Interactive demo with Azure cloud to send and receive data|
+|1|0-22|APP_STATE_WIFI_CONNECT|Setup Wi-Fi registers and connect to the Internet|
+|2|0-17|APP_STATE_MQTT_SETTINGS|Setup MQTT registers to Register & connect with Azure|
+|3|0-9|APP_STATE_DPS_REGISTER|Setup MQTT registers for data exchange with Azure using DPS|
+|4|0-4|APP_STATE_IOTC_CONNECT|Registers and 'Device Twin' connections|
+|5|0-7|APP_STATE_IOTC_GET_SET_DEV_TWIN|Get and sets Azure 'Device Twin' values. Values for "LED0", "reportRate", "press_count" and counter are set and synchronized between the device and the cloud in this state|
+|6|0-5|APP_STATE_IOTC_DEMO|Interactive demo with Azure cloud to send and receive data|
 
 ## CLI Commands (State 0)
 
@@ -463,7 +506,7 @@ If the user needs access to the CLI before completing demo steps, they will like
 
 Eventually the script will start to execute and commands will start scrolling. Once this happens, press the **[ESC]** one time, and you should get a display like this:
 
-<img src="./assets/cli_help.png" width="400"/>
+<img src="./assets/clihelp.png" width="400"/>
 
 At the prompt you can run any of the displayed commands. The table below explains the available command syntax. Feel free to experiment with the "DIR", "SCAN" and "SYS" commands. They are informative commands and will not make any lasting changes to the RNFWxx module. The one command that can and will change the module is the "DEL" commands and is discussed below.
 
@@ -507,11 +550,11 @@ Once the CLI has been entered you can use the _DEL_ and _DIR_ CLI commands to de
 
 All the keys and certificates displayed can be deleted using the "del" command described. Space on the module is limited and for some users, deleting some or all of the pre-installed certificates may be required. Note that once a built-in certificate has been deleted it can only be restored by re-flashing the firmware.
 
-* **If the "DigiCertGlobalRootG2" certificate is deleted, this Demo will NOT work until it is restored with a full firmware flash operation.**
+* **If the "DigiCertGlobalRootG2" certificate is deleted, this Demo will NOT work until it is restored with a the firmware reflash operation.**
 
 ## App.cfg
 
-The "app.cfg" file contains all the settings required for the Python script to connect to the Azure cloud. No modification to the underlying Python script should be required. If the "app.cfg" file does not exist when the script is run, a default version will be created and the user will be prompted for any missing parameters. The 4 parameters, "comm_port", "operation_id", "assigned_hub", "display_level" will not prompt the user for values because they are automatically determined at run-time.
+The "app.cfg" file contains all the settings required for the Python script to connect to the Azure cloud. No modification to the underlying Python script should be required. If the "app.cfg" file does not exist when the script is run, a default version will be created and the user will be prompted for any missing parameters. The 4 parameters, "operation_id", "assigned_hub", and "display_level" will not prompt the user for values because they are automatically determined at run-time.
 
 The "app.cfg" file is formatted in JSON, and can be modified by the user if desired, such as during the steps in this demo. When the JSON file is read by the Python script, it is checked for proper syntax. If any syntax errors are found, the script will indicate the probable fault and line number in the "app.cfg" file and exit.
 
@@ -548,11 +591,7 @@ The config file name, "app.cfg" is hard coded in the Python script. If the user 
 
 ### COM Port Setting Auto-Detection
 
-The "comm_port" value is the only setting that should be left blank if possible. When this value is blank, "", the script will auto-detect the RNFWxx device and set the COM port automatically. The device is detected by sending an identification ```AT+GMM``` command. If the device returns the model specified in the "app.cfg" file, "model":**"RNWF02PC"**, that port is used.
-
-#### Before Manually Setting the COM Port
-
-If the device is not powered on or the COM port is not recognized by the OS, setting the port manually will have NO EFFECT. The device MUST be able to communicate with the PC from within a properly configured terminal __BEFORE__  auto-detection will work.
+The connected RNWFxx device is automatically detected at the start of the Python script. There is no manual override. Refer to "Check These First" section below for troubleshooting steps.
 
 **Check These First**
 
@@ -568,15 +607,13 @@ If the device is not powered on or the COM port is not recognized by the OS, set
      * Double check with the command ```AT+GMM```. You should receive a part number in the terminal.
 
 
-**If device responds correctly to a ```AT+GMM``` command, but the auto-detect still fails, then manually set the COM port in "app.cfg".**
-- i.e. "comm_port": "COM12",
-
 ### Working with a Single App.cfg file
 
 The configuration file is quite flexible in its syntax as long as it remains in pure JSON format, i.e. no missing comma's or quotes.
 
 When the config file is read, each parameter is checked against a list of supported variables.
-* The file is read from beginning to the end.
+
+* The file is read from beginning to end.
 * As each line is read, if the variable is recognized, it is stored and the next line is read.
 * If the variable is NOT recognized it is ignored; however the syntax is checked and will fail if the JSON format is invalid.
 * If multiple variables of the same name are encountered, each are read, but only the <ins>last one</ins> is stored and used by the Python script.
@@ -590,7 +627,6 @@ To prevent being prompted for a value, make sure each "comment" parameter has at
 ```
 {
     "THIS IS A COMMENT AND THE SCRIPT WON'T CARE","_",
-    "comm_port": "",
     "wifi_ssid": "",
 . . .
 }
@@ -601,8 +637,6 @@ To prevent being prompted for a value, make sure each "comment" parameter has at
 The same variable name can be listed in the file multiple times. This allows a single config file to support multiple Wi-Fi networks. To change the network the user just has to move the desired variable to be the last ones read in the config file.
 ```
 {
-    "comm_port": "",
-
     "wifi_ssid": "MY_WORK_SSID",            <- This SSID will NOT be used because of the second copy below
     "wifi_passphrase": "workPassPhrase",    <- This PASSPHRASE will NOT be used either
 
@@ -614,14 +648,12 @@ The same variable name can be listed in the file multiple times. This allows a s
 }
 ```
 
-
 > ## App.cfg Settings
 > * wifi_ssid = ???<br>
 > * wifi_passphrase = ????<br>
 > * wifi_security = ???<br>
 > * device_cert_filename = device_key_filename = mqtt_client_id = ???<br>
 > * id_scope ??? <br>
->
 
 <img src="./assets/app_cfg.png" width="600"/>
 
@@ -631,7 +663,6 @@ The table below shows the 5 parameters needed to connect the RNWFxx to an Azure 
 
 |App.cfg "field"|Source Azure/Script/User|Setup Step|Description|
 |:--|:--:|:--:|:--|
-|"comm_port"|Script/User |Wi-Fi Test and Security Setting|**Auto Set** or Manual |
 |"wifi_ssid"|User|Wi-Fi Test and Security Setting|Wi-Fi BSID|
 |"wifi_passphrase"|User|Wi-Fi Test and Security Setting|Wi-Fi passphrase|
 |"wifi_security"|User|Wi-Fi Test and Security Setting|Can use the CLI command 'scan' for this info|
@@ -658,15 +689,54 @@ After a user has setup their Azure application, the DPS process commands returns
 |mqtt_keep_alive |"120"|Value in seconds before the module will disconnect from Azure without data activity. Increase this value, if the module disconnects due to inactivity. |
 |"at_command_timeout"|"45"|Value in seconds before the script times out an "AT+" command. If a response is not received within this period, the script exits with a time-out error to the CLI. If on a slow internet connection, increasing this value may prevent premature time-out errors. This is only the default time-out period. Some commands are hard coded to longer or shorter periods.|
 |display_level|"3"|This controls the amount of information displayed on the screen during script execution. The range is 0 to 4, with 0 being less and 4 the most info displayed. Each level will show its specified data and that of a lower "display_level" value.<br>**0: Extra displays off...Only CMD and RSP displayed<br>1: Displays State transition banners<br>2: Display info and events & lower<br>3: Display 'Demo' IOTC data & lower [default]<br>4: Display Decodes such as JSON, Crx and lower**|
+|log|"%M.log"|This option automatically produces an AT command log file. Default logs are created in the ".\logs" folder relative to the script directory. The default log file name used will be the name of the device; e.g. "RNWF02.log" or "RNWF11.log" and each execution will overwrite the previous one. To customize log creation refer to the next section.|
 
 <img src="./assets/disp_levels+.png" width="800"/>
 
-### _App.cfg_ - DO NOT CHANGE (RED)
+#### Log Files
+The "log" option in the 'app.cfg' file allows the user to specify the log file name and its relative path to the execution directory. The log definition string default is "%M.log" which uses one of 3 supported substitution tokens described below.
 
-These values are specific to Azure and must not be changed. Changing any of these value will prevent the device from connecting to Azure.
-* The 'ntp_server' field should not be adjusted if NTP time is aquired and is working for this demo. If however the NTP server does not work in your locale, change the field to a more local server and retest.
+1. **%M or %m**: This token is replaced by the 'Device Model' number; e.g. "RNWF02" or "RNWF11"
+2. **%D or %d**: The date token is replaced by the date in the form "MMM_DD_YYYY"; e.g. "Dec_01_2023
+3. **%T or %t**: The last token supports time in the form "HH-MM-SS"; e.g. "13-01-59". Hours are in military or 24H time.
+
+##### Notes
+
+* The default log definition, "%M.log", will be overwritten on each execution of the same device type; e.g. "RNWF02.log" or "RNWF11.log". Each device type will create its own log.
+* The default "log" path, relative to the execution directory, is hard coded to the script folder as "\logs". The script path definition variable is "APP_CMD_LOG_PATH".
+* To create a unique log, that is never overwritten, use the '%T' and optionally the '%D' tokens in the log string definition.
+* The log string definition in 'app.cfg' can be modified to enable preservation of every log file as well as storing logs in different folders relative to the the execution path.
+  * _Paths specified are automatically created and reported in application start banner if successful._
+* When the user successfully exits the application with **[ESC][ESC]**, the 'app.cfg' contents are written to the end of the log.
+  * _This does not occur if the user exits with [CTRL-C] or if the application exits due to a code fault._
+* If the log definition is invalid, the log will not be created, but the execution will continue. The opening header on the CLI will indicate if the log creation was successful or failed.
+
+| Success |Disabled|Failure |
+|:--:|:--:|:--:|
+|"logs": "%M.log" (default)|    "logs": ""|"logs": "%M?.log" (illegal char '?' used) |
+|<img src="./assets/logOK.png" width="280"/> |<img src="./assets/logOFF.png" width="280"/>   |<img src="./assets/logER.png" width="280"/>|
+
+
+#### Examples
+| Log String |Unique<br>Log|Overwrites<br>Log|Description |
+|:--|:--:|:--:|:--|
+|"%M.log" (Default)|No*|Yes|Log file name uses the 'Device Model' and is only *unique per device model.<br>e.g. ".\logs\RNWF11.log"|
+|"OneFile.log"|No|Yes|A single log is used for all executions and Device Models.<br>e.g. "\logs\OneFile.log"|
+|""|n/a|n/a|Log file is disabled and log path is not created.|
+|"%M_%D_%T.log"|Yes|No|Creates unique log files by adding time and date.<br>e.g. ".\logs\RNWF11_Dec_01_2023_13-02-59.log"|
+|"./../MyTest/%M_%T.log"|Yes|No|Creates 'MyTest' log folder at same directory level as the script.<br>e.g. ".\MyTest\RNWF11_13-02-59.log"|
+|"./../../Parent/%M_%T.log"|Yes|No|Creates 'Parent' log folder in the parent directory of the script.<br>e.g. "..\Parent\RNWF11_13-02-59.log"|
+|"./%M/%D_@_%T.log"|Yes|No|Saves log files in 'Device Model' folders under the default ".\log" folder.<br>e.g. "\logs\RNWF11\Dec_01_2023_@_13-01-59.log" |
+|"./%M/%M.txt"|No|Yes|Same as above except a single log per 'Device Model' is written as a 'txt' file.<br>e.g. "\logs\RNWF11\RNWF11.txt"<br>e.g. "\logs\RNWF02\RNWF02.txt" |
+|||||
+
+### _App.cfg_ - Do Not Change (Orange)
+
+These values are specific to Azure and should not be changed. Changing any of these value will prevent the device from connecting to Azure.
+* The 'ntp_server' field should not be adjusted if NTP time is aquired and is working for this demo. If however, the NTP server does not work in your locale, change the field to a more local server and retest.
 * The 'device_template' is preset in the Azure cloud and provided by Microchip during DPS registration. It defines all the telemetry, parameter and commands supported by this demo. This setting should work for the demo and should not need to be changed. If for some reason it is not automatically set, the original device template can be manually uploaded to your Application from the Azure app site. The file is available in the "\Tools\DeviceTemplate" folder of this project.
-* The 'model' is used at the beginning of the script help identify the COM port the module is attached to. Changing this string to another value may prevent the script from executing.
+* 
+
 
 |App.cfg "field"|Default|Description|
 |:--|:--|:--|
@@ -676,6 +746,5 @@ These values are specific to Azure and must not be changed. Changing any of thes
 |"tls_device_server"|"*.azure-devices.net"|Azure's TLS server web address|
 |"device_template"|"dtmi:com:Microchip:AVR128DB48_CNANO;1"|Microchip's default device template|
 |"ntp_server"|"0.in.pool.ntp.org"|Default Network Time Protocol server. Can be changed for your region if desired|
-|"model"|"RNWF02PC"|Default Microchip RNWFxx module.|
 |"mqtt_password"|"NA"|MQTT password is not required for Azure's secure and encrypted MQTT service.|
 |"mqtt_version"|"3"|MQTT v3 is supported by Azure. MQTT v5 is not yet supported by Microsoft|

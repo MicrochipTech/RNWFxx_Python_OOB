@@ -95,6 +95,7 @@ try:
     if FORCE_DPS_REG >= 1 or OPERATION_ID == "" or ASSIGNED_HUB == "":
         OPERATION_ID = iotp.params["operation_id"] = ""
         ASSIGNED_HUB = iotp.params["assigned_hub"] = ""
+        iotp.write()
 
     DEVICE_CERT_FILENAME = iotp.params["device_cert_filename"]
     DEVICE_KEY_FILENAME = iotp.params["device_key_filename"]
@@ -195,9 +196,10 @@ MQTT_SUBSCRIPTION_READ_THRESHOLD = 700
 # telemetry topic (for publish)
 # write property to cloud topic (for publish)
 TOPIC_IOTC_WRITE_PROPERTY = "$iothub/twin/PATCH/properties/reported/?rid="
+
 # request all device twin properties (for publish)
-TOPIC_IOTC_PROPERTY_REQUEST = "$iothub/twin/GET/?$rid="
-#
+TOPIC_IOTC_PROPERTY_REQUEST = "$iothub/twin/GET/?$rid=getTwin"
+
 TOPIC_IOTC_CMD_RESP = "$iothub/methods/res/200/?$rid="
 
 # method topic (for subscription)
@@ -471,9 +473,9 @@ class IotCloud:
         now = datetime.now()
         t = now.strftime("%H-%M-%S")
         d = now.strftime("%b_%d_%Y")
-        file_name = file_name.replace("%m", "%M", 1).replace("%M", MODEL, 1)
-        file_name = file_name.replace("%d", "%D", 1).replace("%D", d, 1)
-        file_name = file_name.replace("%t", "%T", 1).replace("%T", t, 1)
+        file_name = file_name.replace("%m", "%M").replace("%M", MODEL)
+        file_name = file_name.replace("%d", "%D").replace("%D", d)
+        file_name = file_name.replace("%t", "%T").replace("%T", t)
         globals()["APP_CMD_LOG_FILE"] = file_name
         return file_name, now
 
@@ -481,19 +483,17 @@ class IotCloud:
         """ Sets the logfile handle, if applicable and opens the log file for writing """
         file_name, now = self.set_log_file_name()
         if file_name:
-            try:  # Create the certificate build folder structure
-                os.makedirs(f'{globals()["APP_CMD_LOG_PATH"]}')
-            except FileExistsError:
-                # directory already exists
-                pass
             try:
                 logfile = f'{globals()["APP_CMD_LOG_PATH"]}/{file_name}'
+                directory = os.path.dirname(logfile)
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
                 self.log_file_handle = open(f'{logfile}', "w+")
             except:
                 banner(f' ERROR: Log file could not be created or written\n'
-                       f' Verify {APP_CONFIG_FILE} \'log\' syntax\n'
-                       f' Is the log file READ ONLY?', BANNER_BORDER_LEV_1)
-                print("\n")
+                       f'           Verify {APP_CONFIG_FILE} \'log\' syntax\n',
+                       BANNER_BORDER_LEV_1)
+                # print("\n")
                 self.log_file_handle = None
                 pass
             else:
@@ -505,6 +505,8 @@ class IotCloud:
                 self.log_file_handle.write(f'COM Port:  {COM_PORT}\n')
                 self.log_file_handle.write(f'Force DPS: {FORCE_DPS_REG}\n')
                 self.log_file_handle.write(f'{"-" * 46}\n\n')
+        else:
+            self.log_file_handle = None
 
     def log_state(self, msg: str, border_char: str = '#', single_line: bool = False) -> None:
         """ Adds a banner in the log if log is used"""
@@ -547,8 +549,12 @@ class IotCloud:
 
     def is_model(self, dev: str, val_true: any = True, val_false: any = False) -> any:
         """ Verifies device MODEL number and returns True, False or the passed in type if true """
-        global MODEL, FORCE_DPS_REG
-        if dev == "RNWF11" and dev == MODEL and bool(FORCE_DPS_REG) is True:
+        global MODEL, FORCE_DPS_REG, OPERATION_ID, ASSIGNED_HUB
+        # legacy_mode applies to the RNWF11 only. It causes the RNWF11 to act like a RNWF02 device when:
+        #   The device is a RNWF11 and both OPERATION_ID and ASSIGNED_HUB are set or FORCE_DPS_REG is true
+        legacy_mode = (dev == MODEL) and ((OPERATION_ID != "" and ASSIGNED_HUB != "") or bool(FORCE_DPS_REG))
+
+        if dev == "RNWF11" and dev == MODEL and legacy_mode:
             return val_false
         if dev == MODEL:
             return val_true
@@ -1343,18 +1349,15 @@ class IotCloud:
             elif self.app_sub_state == 3:  # MQTT Client ID
                  self.cmd_issue(f'AT+MQTTC=3,"{MQTT_CLIENT_ID}"')
             elif self.app_sub_state == 4:  # MQTT Username
-                self.cmd_issue(f'AT+MQTTC=4,"{ID_SCOPE}/registrations/{MQTT_CLIENT_ID}/api-version={API_VERSION_DPS}"',
-                               2)   # Skip the next command 'MQTT Password...not required
-            elif self.app_sub_state == 5:  # Set MQTT Password
-                self.cmd_issue(f'AT+MQTTC=5, ""')
-            elif self.app_sub_state == 6:  # Set MQTT Keep Alive
+                self.cmd_issue(f'AT+MQTTC=4,"{ID_SCOPE}/registrations/{MQTT_CLIENT_ID}/api-version={API_VERSION_DPS}"')
+            elif self.app_sub_state == 5:  # Set MQTT Keep Alive
                 self.cmd_issue(f'AT+MQTTC=6, {MQTT_KEEP_ALIVE}')
-            elif self.app_sub_state == 7:  # Set TLS configuration index see "AT+TLSC"
+            elif self.app_sub_state == 6:  # Set TLS configuration index see "AT+TLSC"
                 self.cmd_issue(f'AT+MQTTC=7, {TLS_CFG_INDEX}')
-            elif self.app_sub_state == 8:  # Set MQTT version 3 or 5
+            elif self.app_sub_state == 7:  # Set MQTT version 3 or 5
                 self.cmd_issue(f'AT+MQTTC=8, {MQTT_VERSION}', 1)
                                #self.is_model("RNWF11", 1, 8)) # RNWF02 skips next 6 commands
-            elif self.app_sub_state == 9:
+            elif self.app_sub_state == 8:
                 # This check is for a physical RNWF11 device, even if FORCE_DPS is enabled
                 if MODEL == "RNWF11":       # RNWF11 Only! Set the 'Subscription read threshold' to prevent JSON failure.
                     self.cmd_issue(f'AT+MQTTC=9, {MQTT_SUBSCRIPTION_READ_THRESHOLD}',
@@ -1368,16 +1371,16 @@ class IotCloud:
             #
             # START: RNWF11 Specific commands used to perform Azure DPS internal to the device
             #
-            elif self.app_sub_state == 10:  # RNWF11 select Azure Server(1), Other(0)
+            elif self.app_sub_state == 9:  # RNWF11 select Azure Server(1), Other(0)
                 self.cmd_issue(f'AT+MQTTC=10, 1', 1)
-            elif self.app_sub_state == 11:  # RNWF11 select device template
+            elif self.app_sub_state == 10:  # RNWF11 select device template
                 self.cmd_issue(f'AT+AZUREC=1, "{DEVICE_TEMPLATE}"', 1)
-            elif self.app_sub_state == 12:
+            elif self.app_sub_state == 11:
                 self.cmd_issue('AT+MQTTCONN=1', 1, "+MQTTCONNACK", 60)
-            elif self.app_sub_state == 13:
+            elif self.app_sub_state == 12:
                 # RNWF11 ONLY: Send MQTTC=4 to retrieve the internally negotiated Assigned Hub string
                 self.cmd_issue(f'AT+MQTTC=4')
-            elif self.app_sub_state == 14:
+            elif self.app_sub_state == 13:
                 # FW Bug Fix: Initial fw release doesn't send the 'api-version' with this cmd.
                 #
                 # The Assigned Hub is retrieved by "rx_data_process()" under "elif "+MQTTC=4 +MQTTC:4""
@@ -1393,13 +1396,13 @@ class IotCloud:
             #
             # END: RNWF11 specific commands
             #
-            elif self.app_sub_state == 15:          # Disconnect from MQTT server
+            elif self.app_sub_state == 14:          # Disconnect from MQTT server
                 self.cmd_issue('AT+MQTTDISCONN=0', 1, "+MQTTCONN:0")
-            elif self.app_sub_state == 16:          # Report MQTT settings
+            elif self.app_sub_state == 15:          # Report MQTT settings
                 self.cmd_issue(f'AT+MQTTC')
-            elif self.app_sub_state == 17:          # MQTT make the connection
+            elif self.app_sub_state == 16:          # MQTT make the connection
                 self.cmd_issue(f'AT+MQTTCONN=1', 1, "+MQTTCONNACK", 60)  # CRITICAL Wait for this response
-            elif self.app_sub_state == 18:
+            elif self.app_sub_state == 17:
                 if self.is_model("RNWF11"):          # RNFW11 skips DPS completely
                     self.set_state(APP_STATE_IOTC_CONNECT, 0)
                 else:                               # RNFW02 does DPS now
@@ -1493,12 +1496,6 @@ class IotCloud:
                 # self.cmd_issue(f'NOOP')
             elif self.app_sub_state == 3:
                 self.cmd_issue(f'AT+MQTTSUB="{TOPIC_IOTC_PROPERTY_RES}",0', 1, "+MQTTSUB:0")
-                # self.cmd_issue(f'NOOP')
-            # elif self.app_sub_state == 4:       # FNWF11 Only
-            #     if MODEL == "RNWF11":
-            #         self.cmd_issue(f'AT+MQTTSUBLST', 1)
-            #     else:
-            #         self.app_sub_state += 1
             elif self.app_sub_state == 4:
                 self.app_sub_state = APP_STATE_COMPLETE
             else:
@@ -1515,17 +1512,15 @@ class IotCloud:
                 banner_txt = f' {APP_STATE_IOTC_GET_SET_DEV_TWIN} - APP_STATE_IOTC_GET_SET_DEV_TWIN '
                 banner(f'{banner_txt}', BANNER_BORDER_LEV_1)
                 self.log_state(banner_txt)
-# TODO: RIO2 check
             self.set_state(APP_STATE_IOTC_GET_SET_DEV_TWIN, 1)
         else:
             if self.app_wait:  # Wait here until last command completes
                 return self.app_sub_state
             elif self.app_sub_state == 1:
                 print("Read current device twin settings from IOTC")
-                self.rid += 1
+                #self.rid += 1
                 self.mqtt_publish(0, 0,
-                                  f'{TOPIC_IOTC_PROPERTY_REQUEST}{self.hex_rid()}',
-                                  "", 1, "+MQTTSUBRX:")
+                                  f'{TOPIC_IOTC_PROPERTY_REQUEST}', "", 1, "+MQTTSUBRX:")
             elif self.app_sub_state == 2:
                 self.rid += 1
                 #print("Report Read-Only Property: IP Address = " + self.ip_addr_ipv4)
@@ -2212,7 +2207,19 @@ class IotCloud:
                         self.cmd_log(f'\nDisconnecting Broker...\n')
                         self.cmd_issue_quiet('AT+MQTTDISCONN=0', 0, "+MQTTCONN:0")
                         sleep(0.5)
-                    self.cmd_log(f'\nExit Application\n')
+
+                    if self.log_file_handle:
+                        try:    # Write the config file to the log
+                            cfg = open(f'{APP_CONFIG_FILE}', "r")
+                            self.log_file_handle.write('\n')
+                            self.log_state(f'Configuration Settings')
+                            for item in cfg:
+                                self.log_file_handle.write(item)
+                            self.log_file_handle.write('\n\n')
+                            cfg.close()
+                        except:
+                            pass
+                    self.cmd_log(f'Exit Application\n')
                     print(f'\n')
                     print('\n')
                     exit(0)
@@ -2356,7 +2363,7 @@ if MODEL == "":
 
 # Instantiate global classes
 ac = IotCloud(COM_PORT, 230400)      # Create primary IotCloud object
-if APP_CMD_LOG_FILE:
+if APP_CMD_LOG_FILE and ac.log_file_handle:
     logline = f' Log File:  {APP_CMD_LOG_PATH}/{APP_CMD_LOG_FILE} '
 else:
     logline = f' Log File:  Disabled'

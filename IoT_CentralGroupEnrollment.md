@@ -50,10 +50,12 @@ This setting will allow your new device to automatically connect in a later step
    Once selected, press the "Open" button.
 
    * If you have followed the naming conventions from this demo, the file name should be **"subca.crt"**
-
-   <img src="./assets/cert_autoDirStruct+.png" width="500" alt="">
   
-   <img src="./assets/AzureBuildApp17+.png" width="700"/>
+    |||
+    |:-:|:-:|
+    |RMWF02|RNWF11|
+    |<img src="./assets/AppCfg+.png" width="400" alt="">|<img src="./assets/RNWF11_cert_folder+.png" width="400" alt="">|
+    |<img src="./assets/AzureBuildApp17+.png" width="350"/>|<img src="./assets/RNWF11_cert_folder_x+.png" width="400"/>|
 
 7. To close out the certificate file selection...
    * The file name should be set

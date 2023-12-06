@@ -9,12 +9,15 @@ __pycache__
 *_ORIGINAL.*
 *_ORIG.*
 *_TEMP.*
+_Val*
 _archive
 tools/CertificateTool/devcerts/*
 tools/CertificateTool/subca/*
 tools/CertificateTool/rootca/*
 tools/CertificateTool/CertBuilds
 temp/*
+logs/*
 *.key
 *.crt
 *.pem
+*.txt
