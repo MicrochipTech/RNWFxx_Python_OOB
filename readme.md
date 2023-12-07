@@ -245,7 +245,7 @@ For this demo follow the instructions shown here:
 
 ### [First Method: "Auto.cmd" for RNWF02](./tools/CertificateTool/readme.md)
 
-## Installing Certificates to the RNWF02 module (Not Required for the RNWF11)
+## Installing Certificates to the RNWF02 module (Not Required for RNWF11)
 
 **This step is not required for the RNWF11 module as it already contains its own factory generated internal certificates**
 
