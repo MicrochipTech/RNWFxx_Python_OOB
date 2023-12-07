@@ -150,7 +150,7 @@ While the terminal is open, we will determine the Wi-Fi "security" setting direc
 
 The full list of Wi-Fi security settings are available in the RNFWxx's "AT Command Specification" document and listed below.
 
-```
+``` Text
         0   Open
         2   WPA2-Personal Mixed Mode
         3   WPA2-Personal
@@ -182,7 +182,7 @@ Any device which presents a leaf certificate that was derived from the signer (o
 
 >
 ## RNWF11 ONLY: Generate the Files for Your Chain of Trust
-The RNWF11 module has the ability to generate its own certificates by way of an AT+ command. When the Demo is run, it will automatically create certificates and write them to the **".\tools\CertificateTool\CertBuilds\snXXX...XXX"** folder. The folder name is automatically named using the RNWF11's unique serial number programmed at the factory. The 'app.cfg' file is 
+The RNWF11 module has the ability to generate its own certificates by way of an AT+ command. When the Demo is run, it will automatically create certificates and write them to the **".\tools\CertificateTool\CertBuilds\snXXX...XXX"** folder. The folder name is automatically named using the RNWF11's unique serial number programmed at the factory. The 'app.cfg' fields "device_cert_filename", "device_key_filename" and "mqtt_client_id" are automatically updated by the script.
 
 ### RNWF11 Certificate Generation
 At this point in the process the "app.cfg" file should contain your Wi-Fi settings. If not set, set them using the process described in [Wi-Fi Test and Security Setting](#wi-fi-test-and-security-setting) section.
