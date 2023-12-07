@@ -2393,4 +2393,7 @@ try:
         ac.run_app()
 
 except KeyboardInterrupt:
-    print(f'\n\n   [CTRL-C] User Exit')
+    print(f'\n   [CTRL-C] User Exit')
+
+except serial.SerialException:
+    print(f'\n  Serial UART Communication Lost')
