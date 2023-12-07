@@ -21,3 +21,4 @@ logs/*
 *.crt
 *.pem
 *.txt
+app.cfg
