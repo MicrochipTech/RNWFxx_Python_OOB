@@ -6,24 +6,24 @@
 
 This document describes how to connect a Microchip RNFWxx to a cloud application running on Microsoft's Azure IoT Central platform. Secure connections are made possible by using Certificate Authority (CA) signed X.509 certificate authentication between the Azure server and client (a.k.a. "device"). Wireless connectivity to the cloud is then established by connecting Microchip's RNFWxx module to a Host PC with an available USB port to serve an easy-to-use, serial-to-cloud bridge using AT commands.
 
-### References
+<!-- ### References
 
-* [RNWFxx Application Developer's Guide](https://internal.onlinedocs.microchip.com/oxy/GUID-D0CB3D06-2ABE-4892-963E-65CAE080D507-en-US-1/index.html) <img src="./assets/todo.png" width="35">
-* [pyDFU Firmware Flashing Tool](https://microchiptechnology.sharepoint.com/:u:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/rio0_pydfu-main@2dc83c1b8f2.zip?csf=1&web=1&e=DyUEvr) <img src="./assets/tbd.png" width="35">
+* [RNWFxx Application Developer's Guide](./assets/tbd.png) <img src="./assets/todo.png" width="35">
+* [pyDFU Firmware Flashing Tool](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
   
 #### RNWF02
-  * [Wi-FI Module Datasheet](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Wi-Fi%20Module%20Data%20Sheet.pdf?csf=1&web=1&e=GAHeDe) <img src="./assets/tbd.png" width="35">
-  * [Add On Board User's Guide](https://microchiptechnology.sharepoint.com/:b:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02%20Add%20On%20Board%20User%27s%20Guide.pdf?csf=1&web=1&e=ilDLpz) <img src="./assets/tbd.png" width="35">
-  * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
-  * [Firmware](https://microchiptechnology.sharepoint.com/:u:/r/sites/MWS/Documents/Early%20Adopter/WiFi/Rio-0%20RNWF02/A2%20Silicon/EAC%20(v1.0)/RNWF%20EAC%20v1.0%20package/RNWF02_Firmware_v1.0.zip?csf=1&web=1&e=jozerd) <img src="./assets/tbd.png" width="35">
-  * [Demo Examples]() <img src="./assets/tbd.png" width="35">
+  * [Wi-FI Module Datasheet](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [Add On Board User's Guide](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [AT Command Reference Guide](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [Firmware](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [Demo Examples](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
 
 #### RNFW11
-  * [Wi-FI Module Datasheet]() <img src="./assets/tbd.png" width="35">
-  * [Add On Board User's Guide]() <img src="./assets/tbd.png" width="35">
-  * [AT Command Reference Guide]() <img src="./assets/tbd.png" width="35">
-  * [Firmware]() <img src="./assets/tbd.png" width="35">
-  * [Demo Examples]() <img src="./assets/tbd.png" width="35">
+  * [Wi-FI Module Datasheet](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [Add On Board User's Guide](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [AT Command Reference Guide](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [Firmware](./assets/tbd.png) <img src="./assets/tbd.png" width="35">
+  * [Demo Examples](./assets/tbd.png) <img src="./assets/tbd.png" width="35"> -->
 
 ## Overview
 
@@ -59,11 +59,11 @@ The Python script **"oobDemo.py"** uses an external JSON file to record various 
   
      <img src="assets/Python_Path_sh.png" width="400">
   
-   * After installation, open a command prompt in _[YOUR_OOB_DEMO_ROOT_FOLDER]_of the "oobdemo" project
+   * After installation, open a command prompt in your ```RNWFxx_Python_OOB``` folder
    * Execute the command:
   
     ```
-     "pip install -r requirements.txt"
+     C:\RNWFxx_Python_OOB\pip install -r requirements.txt
     ```
 
 3. [Terminal Emulator](https://en.wikipedia.org/wiki/List_of_terminal_emulators) program of your choice. 
@@ -74,12 +74,14 @@ The Python script **"oobDemo.py"** uses an external JSON file to record various 
      * [Enter] behavior: Menu->Terminal->Change Settings:<br> Pressing return/enter key sends: "\r\n(DOS)"
    * [Tera Term](https://ttssh2.osdn.jp/index.html.en) 
      * 'Enter' behavior: Menu->Setup-Terminal...<br> New-line, Receive: "CR", Transmit: "CR+LF"
-4. Certificate **sendTo_tool** - Use Windows Explorer's "right click" function to install device certificates to the RNFWxx module.
-   * Open a Windows Explorer to the "_[YOUR_OOB_DEMO_ROOT_FOLDER]_\tools\sendTo_tool" folder.
-   * Double-click on the "install.cmd" file.
-   * When you are done with the demo and no longer need to install certificates, run the 'uninstall' command.
-   * Full instructions are available [here](./tools/sendTo_tool/CertKeyFlashTool.md).
+4. Certificate **sendTo_tool** - **RNWF02 Only** Use Windows Explorer's "right click" function to install device certificates to the RNFW02 module.<br>
+   ```The RNWF11 module does not require this tool. If accidentally installed, run the 'unistall.cmd' file.```
 
+   * Open a Windows Explorer in the "RNWFxx_Python_OOB\tools\sendTo_tool" folder.
+   * Double-click on the "install.cmd" file.
+   * When you are done with the demo and no longer need to install certificates, run the ```'uninstall.cmd'``` file.
+   * Full instructions are available [here](./tools/sendTo_tool/CertKeyFlashTool.md).
+   
 # Clone this Repository
 
 Create a clone of this [repository](https://github.com/MicrochipTech/RNWFxx_Python_OOB/tree/main) using the [Git](https://git-scm.com) tool in a command line window
@@ -105,15 +107,22 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
 ## RNFWxx Serial Test
 
   * With the RNFWxx module connected via a USB-C cable, verify the _RED_ LED indicating power is illuminated on the board. Its to the right of the USB-C connector.
-  * If not, check the USB cable and verify the driver for the UART has been loaded via Windows Device Manager.
+  * If the LED is not illuminated, check the USB cable and verify the driver for the UART has been loaded via Windows Device Manager.
 * If the new COM port is known, set that in the Terminal program.
   * Configure the port for **230400b,8N1** once enumerated after plugging in the board.
   * Set the [ENTER] key behavior to send "CR + LF" or "\r\n". **The device will NOT respond if this is set improperly.**
-* In the terminal press the "Enter" key and verify a response from the module
-* Entering the command ```AT+GMR``` and pressing [ENTER] should display something like this:
+* In the terminal press the "Enter" key and verify a response from the module.
+* Enter the command ```AT+GMR``` and press [ENTER].
+    
+    <img src="./assets/LorrisTest.png" width="520" alt="">
+    
+    ```The output for the RNWF02 module is shown here, other modules are similar.```
+
+
+
 * Keep the terminal open for the [Wi-Fi Test and Security Setting](#wi-fi-test-and-security-setting) section next... 
   
-    <img src="./assets/LorrisTest.png" width="600" alt="">
+
    
 ### RNFWxx Serial Port Troubleshooting
 If the module does not respond there a few things to try. These tips were used with the "Lorris Terminal".
@@ -166,14 +175,14 @@ The full list of Wi-Fi security settings are available in the RNFWxx's "AT Comma
 
 ## Step 1 - Provision the RNWFxx Module
 
-For secure connections, a chain of trust (which includes certificates & keys for the root, signer, and client) needs to be generated and programmed into the RNWFxx module.
+For secure connections, a chain of trust, which includes certificates & keys for the root, signer, and clients, need to be generated for use with a RNWFxx module. The modules supported by this demo, the RNWF02 and RNWF11
 
-The device (client) certificate file will be needed when we create the device in This demo for the Azure IoT Central demo uses the group enrollment method which requires uploading the signer certificate file to the Azure IoT Central application. 
+The device (client) certificate file will be needed when we create the Azure IoT Central app and will use the group enrollment method. This method requires uploading a 'signer' certificate file to the Azure IoT Central application. This is required for both RNWF02 and RNWF11.
 
 Any device which presents a leaf certificate that was derived from the signer (or root) certificate, will automatically be granted access to registration (which is governed by the Device Provisioning Service linked to the IoT Hub that's used by an IoT Central application).
 
 > ## App.cfg Setting
-> **RNWF02:** These values are set manually<br>
+> **RNWF02:** These values are set manually by the user<br>
 > **RNWF11:** Values are set automatically by the script<br>
 > <br>
 >  _device_cert_filename_ = Desired "COMMON NAME"<br> 
@@ -182,68 +191,83 @@ Any device which presents a leaf certificate that was derived from the signer (o
 
 >
 ## RNWF11 ONLY: Generate the Files for Your Chain of Trust
-The RNWF11 module has the ability to generate its own certificates by way of an AT+ command. When the Demo is run, it will automatically create certificates and write them to the **".\tools\CertificateTool\CertBuilds\snXXX...XXX"** folder. The folder name is automatically named using the RNWF11's unique serial number programmed at the factory. The 'app.cfg' fields "device_cert_filename", "device_key_filename" and "mqtt_client_id" are automatically updated by the script.
+The RNWF11 contains internal certificates generated by the factory which are present, but cannot be listed or viewed by the user. These internal "device" certificates must be paired with the corresponding "signer" certificate which must be uploaded to the cloud provider, Azure. The RNWF11 provides an AT+ command, ```"AT+ECCRDCERT=2,1500"```, to download the "signer" certificate to complete the "chain of trust".
+
+Each time the oobDemo script is run, and the module is a RNWF11, the "signer" certificate is requested and written to the CertBuilds folder, **".\tools\CertificateTool\CertBuilds\snXXX...XXX"**. The ```snXXX...XXX``` folder name is unique and based on the factory programmed serial number for this particular module. 
+
+If you are using multiple RNWF11's each one will have its own certificate and therefor its own certificate folder. Care must be take to upload the corresponding "signer" certificate for the particular RNWF11 module you are using. If in doubt, run the script to regenerate the certificate and select the certificate with the latest time stamp displayed in Windows Explorer.
+
+<img src="./assets/rnwf11_multicert_explorer.png" width="700" alt="">
+
 
 ### RNWF11 Certificate Generation
 At this point in the process the "app.cfg" file should contain your Wi-Fi settings. If not set, set them using the process described in [Wi-Fi Test and Security Setting](#wi-fi-test-and-security-setting) section.
 
-1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\\[YOUR_OOB_DEMO_ROOT_FOLDER]\\**<br>
+1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\\RNWFxx_Python_OOB\\**<br>
    It should contain the file "oobDemo.py"
 2. At the command prompt, execute the command:
    ``` text
-   C:\YOUR_OOB_DEMO_ROOT_FOLDER\>python oobdemo.py
+   .\RNWFxx_Python_OOB\>python oobdemo.py
    ```
-3. The script requires all required values to be set, but since we don't have them yet we will just enter '**none** 4 times'.
-4. The script will then Reset(RST) the module for about 3s, and continue.
-5. Once the script displays, **Event: WiFi connected...(wait for NTP)** you can press the [ESC] key twice to terminate the script.
-   * If you wait, the script will exit to the CLI on its own, where you will need to press [ESC] once to exit.
+3. All required "app.cfg' fields must be set properly, but since we don't have them yet, we will just enter '**none** 4 times'.
+4. The script will initially Reset(RST) the module and in about 3s, it will continue.
+5. Once the script displays, **Event: WiFi connected...(wait for NTP)**, press the [ESC] key twice to terminate the script.
+   * If you wait, the script will exit to the CLI on its own, where a single press of [ESC] will exit instead.
    * Creating the certificates does NOT require a Wi-Fi connection. By the time the connection is attempted the certificates have already been made.
+6. That's all that is required for the RNWF11.
 
 | | | |
 |:-: |:-: |:-: |
 |<img src="./assets/enter_none.png" width="200" alt="">|<img src="./assets/wifi_connect.png" width="250" alt=""> |<img src="./assets/app_certs_set.png" width="300" alt=""> | 
 |Enter "none" x 4|Press [ESC][ESC]|New 'app.cfg' Entries<br>Device, Key certs and Client ID automatically set.<br>**ID Scope** will be set in a later step|
 
-#### Optional Verification of Certificate Creation
+#### RNWF11 Optional Certificate Verification
 The previous step should have created a new folder containing the RNWF11's certificates. The certificate folder name will use the RNWF11's unique, factory programmed serial number. Its the same string shown in the previous step from the 'app.cfg" file.
-1. To locate the new certificates, open Windows Explorer at the root 'oobDemo' repo.
-2. Open the folder **.\OOBDEMO_ROOT\tools\Certificate Tool\CertBuilds\snXXX...XXX**
-3. Verify the 2 files, "device.crt" and "signer.crt" are present.
-4. In a later step "**signer.crt**" will be uploaded to Azure. The "device.crt" certificate is not used.
+1. To locate the new certificates, open Windows Explorer at the root 'oobDemo' repo. 
+2. Open the folder **.\RNWFxx_Python_OOB\tools\Certificate Tool\CertBuilds\snXXX...XXX**
+3. Verify the 2 files, ```"device.crt"``` and ```"signer.crt"``` are present.
+4. In a later step, the ```"signer.crt"``` will be uploaded to Azure. The "device.crt" certificate is not used.
+
+   <img src="./assets/RNWF11_cert_folder_x+.png" width="800" alt="">
+
 5. Skip to the [Create an Azure Account and Subscription](#create-an-azure-account-and-subscription) step.
 
-<img src="./assets/RNWF11_cert_folder_x+.png" width="800" alt="">
-
-## RNWF02 ONLY: Generate the Files for Your Chain of Trust (RNWF02 Only)
-Creating the required self-signed device certificates is semi-automated and only takes a few seconds. The Windows command script, "auto.cmd", prompts the user for a "common name" and then calls two Bash scripts to complete the certificate creation process. These certificates are used later in the "Python oobDemo.py" step below, so take note of the name specified.<br>
+## RNWF02 ONLY: Generate the Files for Your Chain of Trust
+Creating the required self-signed device certificates is semi-automated and only takes a few seconds. The Windows command script, "auto.cmd", prompts the user for a "common name" and then calls two Bash scripts to complete the certificate creation process. These certificates are used later in the "Python oobDemo.py" step below, so take note of the name you specify in the next procedure.<br>
 
 The scripts used are based on the [Azure's Create and Upload Certificates for Testing](https://learn.microsoft.com/en-us/azure/iot-hub/tutorial-x509-test-certs?tabs=windows) tutorial.
 
 Once these certificates are created, they will be _linked_ to the device Azure creates and cannot be updated without recreating the certificates and reconfiguring Azure.
 
-This simplified process limits the certificate tree to a *single* device to a *single* subordinate root certificate. It does not support multiple devices from a single  root certificate.
+This simplified process limits the certificate tree to a _single_ device to a _single_ subordinate root certificate. It does not support multiple devices from a single  root certificate.
 
 For this demo follow the instructions shown here:  
 
-### [First Method: "Auto.cmd"](./tools/CertificateTool/readme.md)
+### [First Method: "Auto.cmd" for RNWF02](./tools/CertificateTool/readme.md)
 
 ## Installing Certificates to the RNWF02 module (Not Required for the RNWF11)
 
-**This step is not required for the RNWF11 module as it generates its own certificates internally.**
+**This step is not required for the RNWF11 module as it already contains its own factory generated internal certificates**
 
 We will use the previously installed **sentTo_tool** to flash both the device certificate and device key certificate to the RNWFxx.
+
 * Open a Windows Explorer window and locate the certificate folder from the previous step. It should be something like this:
-* From Windows Explorer "right-click" on your device "key" file eg: "RNWF02-Dev99.key"
+
+   ``` Text
+   RNWFxx_Python_OOB\tools\CertificateTool\CertBuilds\[YOUR_COMMON_NAME]\
+   ```
+* From Windows Explorer "right-click" on your device "key" file.<br>
+  * eg: ```"RNWF02-Dev99.key"``` because the COMMON_NAME, "RNWF02-Dev99", was chosen during the certificate creation process.
 * Then click on the "CERT-KEYFlash" in the menu to upload the "key" file.
 
-  <img src="./assets/CertDirStructRC1CmdK+.png" width="600" alt="">
+  <img src="./assets/CertDirStructRC1CmdK+.png" width="800" alt="">
 
 * Repeat the process for the file "RNWF02-Dev99.pem"
 
-  <img src="./assets/CertDirStructRC1CmdC+.png" width="600" alt="">
+  <img src="./assets/CertDirStructRC1CmdC+.png" width="800" alt="">
 
 * The final certificate, the RootCA "intermediate" certificate for the device, will be uploaded to Azure during the Azure app setup.
-* DO NOT UPLOAD the intermediate file ```"subca.crt"``` to the RNWFxx module. It will not work.
+  * DO NOT UPLOAD the "intermediate file" ```"subca.crt"``` to the RNWFxx module. It will not work.
 
 ## Azure IoT Central Applications
 
@@ -302,11 +326,11 @@ With the setup complete, the final step is execution of the "oobDemo.py" script.
 
 
 
-1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\[YOUR_OOB_DEMO_ROOT_FOLDER]\\**<br>
+1. Open a Windows command prompt in the root project directory. Windows Terminal also works well. **C:\\RNWFxx_Python_OOB\\**<br>
    It should contain the file "oobDemo.py"
 2. At the command prompt, execute the command:
    ```text
-   C:\YOUR_OOB_DEMO_ROOT_FOLDER\>python oobdemo.py
+   C:\RNWFxx_Python_OOB\>python oobdemo.py
    ```
 3. If the "app.cfg" file was not manually updated during the setup procedure, the user will be prompted to enter each parameter now. If the "app.cfg" was updated you will not see these prompts and the script will execute from here.
     |RNWF02|RNWF11|
@@ -321,6 +345,8 @@ With the setup complete, the final step is execution of the "oobDemo.py" script.
 
 ## Execution
 
+> ```RNWF02 screen captures are shown below, other modules will be similar...```
+> 
 Assuming the initial setup is correct, a series of commands should scroll by on the display. If for some reason the script fails to perform the final connection try and re-run the Python script.
 
    <img src="./assets/DemoStart.png" width="600"/>
@@ -476,7 +502,7 @@ States 1 though 5 all perform in a similar manner. Each sub-state within a state
 
   * When the final AT+ command is executed it usually takes much more time than the previous setup commands.
 
-  * If the final AT+ command fails, it's usually caused by one or more of the previous setup commands for that state. This is because the FNWF02 checks each command and accepts it based syntax, not context. The module does not know what the ultimate task is until the final command. Once this occurs, the final command will fail if any of the previous setup commands were invalid.
+  * If the final AT+ command fails, it's usually caused by one or more of the previous setup commands for that state. This is because the RNWFxx checks each command and accepts it based syntax, not context. The module does not know what the ultimate task is until the final command. Once this occurs, the final command will fail if any of the previous setup commands were invalid.
 
     * A good example of this is a Wi-Fi connection. If the password is incorrectly set in sub-state 7, the module accepts the password based on syntax alone.
 
@@ -526,6 +552,8 @@ Once the CLI has been entered you can use the _DIR_ CLI command to list the inst
 
 1. Use the CLI command "dir c" or "dir k".
 2. You should see a display like this:
+
+> ```RNWF02 screen captures are shown, other modules will be similar...```
   
 |**List Certificate Keys (dir k)**|**List Certificates (dir c)**|
 |:-----:|:-----------:|
@@ -616,6 +644,7 @@ When the config file is read, each parameter is checked against a list of suppor
 * The file is read from beginning to end.
 * As each line is read, if the variable is recognized, it is stored and the next line is read.
 * If the variable is NOT recognized it is ignored; however the syntax is checked and will fail if the JSON format is invalid.
+  * Make sure there is a value for the parameter so that your are not prompted for it; e.g. ```"MyCustomVariable": "_",```
 * If multiple variables of the same name are encountered, each are read, but only the <ins>last one</ins> is stored and used by the Python script.
 
 #### APP.CFG 'comments'
@@ -626,7 +655,7 @@ To prevent being prompted for a value, make sure each "comment" parameter has at
 
 ```
 {
-    "THIS IS A COMMENT AND THE SCRIPT WON'T CARE","_",
+    "THIS IS A COMMENT AND THE SCRIPT WON'T CARE": "_",
     "wifi_ssid": "",
 . . .
 }
@@ -637,13 +666,13 @@ To prevent being prompted for a value, make sure each "comment" parameter has at
 The same variable name can be listed in the file multiple times. This allows a single config file to support multiple Wi-Fi networks. To change the network the user just has to move the desired variable to be the last ones read in the config file.
 ```
 {
-    "wifi_ssid": "MY_WORK_SSID",            <- This SSID will NOT be used because of the second copy below
-    "wifi_passphrase": "workPassPhrase",    <- This PASSPHRASE will NOT be used either
+    "wifi_ssid": "MY_WORK_SSID",          <- This SSID will NOT be used because of the second copy below
+    "wifi_passphrase": "workPassPhrase",  <- This PASSPHRASE will NOT be used either
 
-    "wifi_ssid": "HOME_SSID",               <- This is the parameter actually used, since it was read last
-    "wifi_passphrase": "homePassPhrase",    <- The matching Wi-Fi will get used, since it is also the last "wifi_passphrase" read.
+    "wifi_ssid": "HOME_SSID",             <- These parameters will be read and used because they were the
+    "wifi_passphrase": "homePassPhrase",  <- ones read by the script
 
-    "wifi_security": "",                    <- This security setting will be read and used by either SSID
+    "wifi_security": "",                  <- This security setting will be read and used by either SSID
     . . .
 }
 ```
@@ -685,20 +714,22 @@ After a user has setup their Azure application, the DPS process commands returns
 
 |App.cfg "field"|Default|Description|
 |:--|:--:|:--|
-|"force_dps_reg"| "0"|Setting this value to '1' will force a DPS negotiation on every execution. Technically, once DPS is successful, it does not need to be performed again.<br>Not performing DPS saves about 20s during the run before the user gets to state6 / Demo state. <br>Setting this to '1' also re-writes the values for **"operation_id"** and **"assigned_hub"**.|
+|"force_dps_reg"| "0"|**RNWF11 Users should NOT enable this setting and leave the default of '0'.**<br>Setting this value to '1' will force a DPS negotiation on every execution. Technically, once DPS is successful, it does not need to be performed again.<br>Not performing DPS saves about 20s during the run before the user gets to the Demo state. <br>Setting this to '1' re-writes the values for **"operation_id"** and **"assigned_hub"** in 'app.cfg' for every execution.|
 |mqtt_keep_alive |"120"|Value in seconds before the module will disconnect from Azure without data activity. Increase this value, if the module disconnects due to inactivity. |
 |"at_command_timeout"|"45"|Value in seconds before the script times out an "AT+" command. If a response is not received within this period, the script exits with a time-out error to the CLI. If on a slow internet connection, increasing this value may prevent premature time-out errors. This is only the default time-out period. Some commands are hard coded to longer or shorter periods.|
-|display_level|"3"|This controls the amount of information displayed on the screen during script execution. The range is 0 to 4, with 0 being less and 4 the most info displayed. Each level will show its specified data and that of a lower "display_level" value.<br>**0: Extra displays off...Only CMD and RSP displayed<br>1: Displays State transition banners<br>2: Display info and events & lower<br>3: Display 'Demo' IOTC data & lower [default]<br>4: Display Decodes such as JSON, Crx and lower**|
+|display_level|"3"|This controls the amount of information displayed on the screen during script execution. The range is 0 to 4, with 0 being less and 4 the most info displayed. Each level will show its specified data and that of a lower "display_level" value.<br>**0: Extra displays off...Only CMD and RSP displayed<br>1: Displays State transition banners<br>2: Display info and events & lower<br>3: Display 'Demo' IOTC data & lower [default]<br>4: Display Decodes such as JSON, Crx and lower**<br><br>```RNWF02 screen captures are shown, other modules will be similar...```<br><img src="./assets/disp_levels+.png" width="800"/>|
 |log|"%M.log"|This option automatically produces an AT command log file. Default logs are created in the ".\logs" folder relative to the script directory. The default log file name used will be the name of the device; e.g. "RNWF02.log" or "RNWF11.log" and each execution will overwrite the previous one. To customize log creation refer to the next section.|
 
-<img src="./assets/disp_levels+.png" width="800"/>
-
 #### Log Files
-The "log" option in the 'app.cfg' file allows the user to specify the log file name and its relative path to the execution directory. The log definition string default is "%M.log" which uses one of 3 supported substitution tokens described below.
+The "log" option in the 'app.cfg' file allows the user to specify the log file name and its output path relative to the execution directory. The log definition string's default is "%M.log" which uses one of 3 supported substitution tokens described below.
 
-1. **%M or %m**: This token is replaced by the 'Device Model' number; e.g. "RNWF02" or "RNWF11"
+1. **%M or %m**: These tokens are replaced by the 'Device Model' number; e.g. "RNWF02" or "RNWF11"
 2. **%D or %d**: The date token is replaced by the date in the form "MMM_DD_YYYY"; e.g. "Dec_01_2023
 3. **%T or %t**: The last token supports time in the form "HH-MM-SS"; e.g. "13-01-59". Hours are in military or 24H time.
+
+   e.g. ```"My_%M_%D_@_%T.log"``` could create a log file named...<br>
+   ```"My_RNWF02_Dec_01_2023_@_13-01-59.log"``` with a RNWF02 module or ...<br>
+   ```"My_RNWF11_Dec_01_2023_@_13-01-59.log"``` with a RNWF11 module
 
 ##### Notes
 
@@ -710,6 +741,8 @@ The "log" option in the 'app.cfg' file allows the user to specify the log file n
 * When the user successfully exits the application with **[ESC][ESC]**, the 'app.cfg' contents are written to the end of the log.
   * _This does not occur if the user exits with [CTRL-C] or if the application exits due to a code fault._
 * If the log definition is invalid, the log will not be created, but the execution will continue. The opening header on the CLI will indicate if the log creation was successful or failed.
+
+> ```RNWF11 screen captures are shown, other modules will be similar...```
 
 | Success |Disabled|Failure |
 |:--:|:--:|:--:|

@@ -1,7 +1,8 @@
 <a href="https://www.microchip.com"><p align="left"><img src="assets/MicrochipLogoHorizontalBlackRed.png" width="350" alt=""></a>
 
-# Create Self-Signed Certificates using Git Bash
-Creating the required self-signed device certificates is semi-automated and only takes a few seconds. There are 2 methods included with this tool. 
+# Create Self-Signed Certificates for RNWF02 using Git Bash
+
+Creating self-signed device certificates is semi-automated and only takes a few seconds. There are 2 methods included with this tool.
 
 The first creates a certificate chain after entering the user chosen "Common Name". Three certificates are then created and posted in a subdirectory ready to use.
 
@@ -16,13 +17,14 @@ The second method involves running 2 scripts from a Git Bash terminal. The resul
 
 
 ## First Method: "Auto.cmd"
-1. Use Windows File Explorer to open the folder **"_[YOUR_PROJECT_FOLDER]_\tools\CertificateTool"**
+1. Use Windows File Explorer to open the folder **"RNWFxx_Python_OOB\tools\CertificateTool"**
 2. Double click on the file "auto" or "auto.cmd" (if 'show file are extensions' turned on).
 3. At the prompt, enter a "common name" that is no more than 23 characters long with no spaces.
 4. After a moment the certificates will be generated and placed in a subdirector named after your chosen "common name".<br>
    The certificates will be located here:
-   ```
-   [YOUR_PROJECT_FOLDER]_\tools\CertificateTool\CertBuilds\[YOUR_COMMON_NAME]\
+
+   ``` Text
+   RNWFxx_Python_OOB\tools\CertificateTool\CertBuilds\[YOUR_COMMON_NAME]\
    ```
 
    | | |

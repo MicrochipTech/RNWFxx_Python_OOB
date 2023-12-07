@@ -45,7 +45,7 @@ This setting will allow your new device to automatically connect in a later step
 6. Use the open file dialog to choose the X.509 certificate file at the path shown below.<br>
 
     ```text
-        "..\[YOUR_OOB_DEMO_ROOT_FOLDER]\tools\CertificateTool\CertBuilds\[COMMON_NAME]\rootca.crt"
+        "..\RNWFxx_Python_OOB\tools\CertificateTool\CertBuilds\[COMMON_NAME]\rootca.crt"
     ```
    Once selected, press the "Open" button.
 
@@ -54,7 +54,7 @@ This setting will allow your new device to automatically connect in a later step
     |||
     |:-:|:-:|
     |RMWF02|RNWF11|
-    |<img src="./assets/AppCfg+.png" width="400" alt="">|<img src="./assets/RNWF11_cert_folder+.png" width="400" alt="">|
+    |<img src="./assets/RNWF02_cert_folder+.png" width="400" alt="">|<img src="./assets/RNWF11_cert_folder+.png" width="360" alt="">|
     |<img src="./assets/AzureBuildApp17+.png" width="350"/>|<img src="./assets/RNWF11_cert_folder_x+.png" width="400"/>|
 
 7. To close out the certificate file selection...
@@ -69,8 +69,7 @@ This setting will allow your new device to automatically connect in a later step
   
    <img src="./assets/AzureBuildApp19+.png" width="700"/>
 
-9. To save the certificate, press the "Save" button near the top of the window.
-   * Pressing **Save** is easily overlooked.
+9. Don't forget to **SAVE** the changes with the "Save" button at the top.
 
    <img src="./assets/AzureBuildApp20+.png" width="700"/>
 
