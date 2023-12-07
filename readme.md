@@ -763,7 +763,7 @@ The "log" option in the 'app.cfg' file allows the user to specify the log file n
 |"%M_%D_%T.log"|Yes|No|Creates unique log files by adding time and date.<br>e.g. ".\logs\RNWF11_Dec_01_2023_13-02-59.log"|
 |"./../MyTest/%M_%T.log"|Yes|No|Creates 'MyTest' log folder at same directory level as the script.<br>e.g. ".\MyTest\RNWF11_13-02-59.log"|
 |"./../../Parent/%M_%T.log"|Yes|No|Creates 'Parent' log folder in the parent directory of the script.<br>e.g. "..\Parent\RNWF11_13-02-59.log"|
-|"./%M/%D_@_%T.log"|Yes|No|Saves log files in 'Device Model' folders under the default ".\log" folder.<br>e.g. "\logs\RNWF11\Dec_01_2023_@_13-01-59.log" |
+|"./%M/%D_@_%T.log"|Yes|No|Saves log files in 'Device Model' folders under the default logs folder.<br>e.g. "\logs\RNWF11\Dec_01_2023_@_13-01-59.log" |
 |"./%M/%M.txt"|No|Yes|Same as above except a single log per 'Device Model' is written as a 'txt' file.<br>e.g. "\logs\RNWF11\RNWF11.txt"<br>e.g. "\logs\RNWF02\RNWF02.txt" |
 |||||
 
