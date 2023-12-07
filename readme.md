@@ -470,11 +470,11 @@ Other commands such as the connect to Wi-Fi command, ```AT+WSTA=1```, may take 2
   
   * While the ```AT+SNTPC``` command was processing, several strings were returned by the module, but did not match the string we were waiting for. These responses were "unsolicited".
   
-    * If a string is returned by the module that does not match the "wait" string, it is displayed without the RSP[XX:YY] prefix, is indented with a ":" then unsolicited response string.
+    * If a string is returned by the module that does not match the "wait" string, it is displayed without the ```RSP[XX:YY]``` prefix, then indented with a ":" and followed with the unsolicited response string.
   
     * The line display is for informational purposes and indicates the command is still processing and waiting for the correct response to be returned.
   
-    * Once that response is received, the standard "RSP[XX:YY]: Some String" is displayed and the next AT command is processed.
+    * Once that response is received, the standard ```RSP[XX:YY]: Some String``` is displayed and the next AT command is processed.
   
 ### State and Sub-States
 
@@ -705,10 +705,14 @@ The table below shows the 5 parameters needed to connect the RNWFxx to an Azure 
 
 After a user has setup their Azure application, the DPS process commands returns the values for the "operation_id" and "assigned_id" and the script automatically sets them in the "app.cfg" file. If the user desires to re-DPS, setting both of these to an empty string will cause DPS to run again at least once regardless of "force_dps_reg" setting.
 
+Only the RNWF02 utilizes these "app.cfg" fields and the script sets them automatically. They are used to record the 2 key strings needed to communicate with Azure. The RNWF11 also requires these strings, but the RNWF11 module itself negotiates with Azure and stores them internally.
+
+```If set with a RNWF11, the settings will override the internal version and cause an DPS failure with Azure.```
+
 |App.cfg "field"|Source Azure/Script/User|Setup Step|Description|
 |:--|:--:|:--:|:--|
-|"operation_id"|Azure|DPS Registration|**Auto Set** by Python script. DO NOT MANUALLY SET|
-|"assigned_hub"|Azure|DPS Registration|**Auto Set** by Python script. DO NOT MANUALLY SET|
+|"operation_id"|Azure|DPS Registration|**RNFW02:** Auto Set by Python script. DO NOT MANUALLY SET<br>**RNFW11:** Not used. MUST remain empty ```""```.|
+|"assigned_hub"|Azure|DPS Registration|**RNFW02:** Auto Set by Python script. DO NOT MANUALLY SET<br>**RNFW11:** Not used. MUST remain empty ```""```.|
 
 ### _App.cfg_ - User Preferences or Adjustments (GREEN)
 
