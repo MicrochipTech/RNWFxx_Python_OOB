@@ -1,24 +1,24 @@
-*.zip
+# Ignore tool & test folders
+/_*
+
+.idea/
+.vscode
+temp
+
+# Ignore various file extensions
 *.pdf
 *.html
-.idea/
-__pycache__
+*.zip
 *.bak
-*_SAVE.*
-*_SAVE/
-*_ORIGINAL.*
-*_ORIG.*
-*_TEMP.*
-_Val*
-_archive
-tools/CertificateTool/devcerts/*
-tools/CertificateTool/subca/*
-tools/CertificateTool/rootca/*
-tools/CertificateTool/CertBuilds
-temp/*
-logs/*
+*.txt
+
+# Certificates
 *.key
 *.crt
 *.pem
-*.txt
-app.cfg
+
+# Script auto-generated folders
+tools/CertificateTool/CertBuilds
+logs
+build
+
