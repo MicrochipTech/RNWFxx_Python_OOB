@@ -777,15 +777,24 @@ class IotCloud:
             resp_code = -1
         # banner(f'Payload:\n{payload}\n{jsn_list}')
         try:
-            # Cleanup the jsn_list by replacing characters to form a proper JSON message
-            jsn_str = self.substr_swap(jsn_list[0], {'\r': '', '\n': '', '\\': '', '}"': '}'})
-            # Convert to JSON object
-            json_obj = json.loads(jsn_str)
+            if len(jsn_list):
+                # Cleanup the jsn_list by replacing characters to form a proper JSON message
+                jsn_str = self.substr_swap(jsn_list[0], {'\r': '', '\n': '', '\\': '', '}"': '}'})
+                # Convert to JSON object
+                json_obj = json.loads(jsn_str)
+            else:
+                json_obj = None
+                payload = self.substr_swap(payload, {'\r': '', '\n': '', '>': ''})
+                resp_list = payload.split(",", 6)
+                # This is the command that will request the twin variables but using the proper
+                # sized buffer contained in 'resp_list[5]' + 10 characters as a buffer
+                self.cmd_issue(f'AT+MQTTSUBRD={resp_list[3]}, {resp_list[4]}, {resp_list[5] + 10}')
         except:
             banner(f'JSON Invalid:     \'{jsn_str}\'\n'
                    f'  JSON Size       {len(jsn_str)} bytes\n'
-                   f'  Payload Size:   {len(payload)} bytes\n')
-            exit(10)
+                   f'  Payload Size:   {len(payload)} bytes\n'
+                   f'  Response Code:  {resp_code}\n')
+            # exit(10)
         return json_obj, resp_code
 
     def evt_init_error(self) -> None:
@@ -1141,6 +1150,8 @@ class IotCloud:
 
     def evt_iotc_property_download(self) -> None:
         """ Handles Azure JSON payload return strings """
+        payload: any = ""
+        resp_code: int = 0
         try:
             (payload, resp_code) = self.process_topic_notification(self.sub_payload)
             if "reportRate" in payload["desired"]:
@@ -1161,7 +1172,9 @@ class IotCloud:
                    f'  * Issue may clear itself after a period of time of 24h or more.\n'
                    f'\nCMD[{self.app_state}.{self.app_sub_state}]: {self.at_command_prev}\n'
                    f'JSON: "{payload}"', BANNER_BORDER_LEV_1)
-            exit(1)
+
+            # exit(1)
+            # self.cmd_issue(f'AT+AT+MQTTSUBRD=')
         self.sub_payload = ""
 
     def evt_cert_received(self, rsp) -> None:
@@ -1361,19 +1374,19 @@ class IotCloud:
             elif self.app_sub_state == 6:  # Set TLS configuration index see "AT+TLSC"
                 self.cmd_issue(f'AT+MQTTC=7, {TLS_CFG_INDEX}')
             elif self.app_sub_state == 7:  # Set MQTT version 3 or 5
-                self.cmd_issue(f'AT+MQTTC=8, {MQTT_VERSION}', 1)
+                self.cmd_issue(f'AT+MQTTC=8, {MQTT_VERSION}', 0)
+                self.set_state(2, self.is_model("RNWF11",
+                                self.app_sub_state + 1, self.app_sub_state + 8))
                                #self.is_model("RNWF11", 1, 8)) # RNWF02 skips next 6 commands
             elif self.app_sub_state == 8:
                 # This check is for a physical RNWF11 device, even if FORCE_DPS is enabled
                 if MODEL == "RNWF11":       # RNWF11 Only! Set the 'Subscription read threshold' to prevent JSON failure.
                     self.cmd_issue(f'AT+MQTTC=9, {MQTT_SUBSCRIPTION_READ_THRESHOLD}',
-                                   self.is_model("RNWF11", 1, 7))
+                                                  self.is_model("RNWF11", 1, 7))
                     #self.cmd_issue(f'NOOP', 7)
                 else:
-                    self.set_state(self.app_state, self.is_model("RNWF11", 1, self.app_sub_state + 7))
-                # Sets state based on device and its mode. 'is_model(), will return:
-                #   True if device = RNWF11 AND Force_DPS is DISABLED
-                #   False if device = RNWF02 or RNWF11 And Force DPS is ENABLED
+                    self.app_sub_state + 7
+
             #
             # START: RNWF11 Specific commands used to perform Azure DPS internal to the device
             #
@@ -2147,6 +2160,11 @@ class IotCloud:
                     self.evt_handler = self.evt_iotc_property_received
             if TOPIC_IOTC_PROPERTY_RES[:(len(TOPIC_IOTC_PROPERTY_RES) - 2)] in received:
                 #   "$iothub/twin/res/#"
+                # Response when the buffer is too small or 0
+                # rsp == '+MQTTSUBRX:0,0,0,"$iothub/twin/res/200/?$rid=getTwin",0,106'
+                # Response when buffer is sized at 700
+                # rsp == '+MQTTSUBRX: 0, 0, 0, "$iothub/twin/res/200/?$rid=getTwin", "{\"desired\":{\"$version\":1},\"reported\":{\"ipAddress\":\"172.31.99.139\",\"LED0\":1,\"reportRate\":0,\"$version\":164}}"
+
                 if self.sub_payload == "":
                     self.sub_payload = received
                     self.evt_handler = self.evt_iotc_property_download
