@@ -67,6 +67,8 @@ APP_CMD_LOG_PATH = "logs"           # Hardcoded relative log file path
 iotp = iot_parameters(APP_CONFIG_FILE, False)
 
 try:
+    is_dirty = False
+
     WIFI_SSID = iotp.params["wifi_ssid"]
     WIFI_PASSPHRASE = iotp.params["wifi_passphrase"]
     WIFI_SECURITY = iotp.params["wifi_security"]
@@ -105,6 +107,10 @@ try:
     TLS_DEVICE_SERVER = iotp.params["tls_device_server"]
     APP_DISPLAY_LEVEL = int(iotp.params["display_level"])
     AT_COMMAND_TIMEOUT = int(iotp.params["at_command_timeout"])  # AT cmds timeout in seconds
+
+    if is_dirty:
+        iotp.write()
+
 except KeyError as e:
     banner(f' Error: Configuration parameter {e} missing \n\n'
             f'Verify the parameter {e} in "{APP_CONFIG_FILE}"\n'
