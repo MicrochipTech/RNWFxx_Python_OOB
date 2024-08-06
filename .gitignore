@@ -1,0 +1,28 @@
+# Ignore tool & test folders
+/_*
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1f45e89 (Initial commit)
+=======
+>>>>>>> cbfbe60 (Useless update)
+.idea/
+.vscode
+temp
+
+# Ignore various file extensions
+*.pdf
+*.html
+*.bak
+
+# Certificates
+*.key
+*.crt
+*.pem
+
+# Script auto-generated folders
+tools/CertificateTool/CertBuilds
+logs
+build
+
