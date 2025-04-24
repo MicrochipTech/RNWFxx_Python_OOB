@@ -177,9 +177,6 @@ You are responsible for complying with third party license terms applicable to y
 * [Terminal Emulator](https://en.wikipedia.org/wiki/List_of_terminal_emulators) program of your choice. ![ALT][opt]
   * Must support 230,400 baud 
   * Setting the serial terminal ![ALT][ent] key behavior on transmit to "CR + LF".
-  * [Lorris Toolbox](https://tasssadar.github.io/Lorris/)
-    * After opening a "terminal" using the **'+'** tab, set the ![ALT][ent] key behavior...
-    * ![ALT][ent] behavior: Menu->Terminal->Change Settings:<br> Pressing return/enter key sends: "\r\n(DOS)"
   * [Tera Term](https://ttssh2.osdn.jp/index.html.en) 
     * 'Enter' behavior: Menu->Setup-Terminal...<br> New-line, Receive: "CR", Transmit: "CR+LF"
 
@@ -245,14 +242,14 @@ As an alternative, scroll up towards the top of this page, click on the **Code**
 
 ### RNFWxx Serial Port Troubleshooting
 
->If the ```Add-on``` board does not respond there a few things to try. These tips were used with the "Lorris Terminal".
+>If the ```Add-on``` board does not respond there a few things to try.
 
 1. Verify the COM port is configured **230400 baud, 8N1**.
 2. Verify the Terminal is set to send "CR + LF" or "\r\n" on transmit. If this is not set, the ```Add-on``` board will not respond to commands!
 3. Disconnect any other USB based UART Add-on board from the PC. Bluetooth UARTs do not need to be disconnected.
 4. Unplug the ```Add-on``` board and then plug it in again. The PC should make a connection sound and show a new COM port in Device Manager. If it does not, you may need to install the driver for the UART.
 5. Close any other terminals, or programs which may be using the same COM port. This includes the "oobDemo.py" Python script.
-6. Make sure the terminal is set to the correct COM port. Fortunately _Lorris_ allows you to open multiple ports at once. Just press the "+" button to open a new COM port tab.
+6. Make sure the terminal is set to the correct COM port.
 7. Try disconnecting from the Add-on board using a software "Disconnect" then "Connect" again. Sometimes this helps to jump start the communication.
 8. Disconnect the Add-on board, reboot the host PC and try again.
 9. If all else fails, locate a known good serial device/Add-on board, reconfigure it and verify the PC, terminal and USB cable are working.
